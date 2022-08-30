@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import unique, IntEnum
+import os
+import pickle
+
+MEMBERS_FILE = "members.pkl"
 
 timezone_to_utc_offset: dict[str, int] = {
     "HST": -10,
@@ -65,6 +69,24 @@ class AccountabilityMember:
     commitments: list[Commitment]
     is_active: bool
     timezone: str
+
+
+@dataclass
+class AccountabilityMembers:
+    members: dict[int, AccountabilityMember]
+
+    def save(self) -> None:
+        with open(MEMBERS_FILE, "wb") as f:
+            pickle.dump(self.members, f)
+
+    def load(self) -> None:
+        if not os.path.exists(MEMBERS_FILE):
+            return
+        with open(MEMBERS_FILE, "rb") as f:
+            self.members = pickle.load(f)
+
+
+accountability_members = AccountabilityMembers(members={})
 
 
 def days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:
