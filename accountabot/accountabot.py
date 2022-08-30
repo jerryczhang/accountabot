@@ -49,7 +49,7 @@ async def check_commitments_of_member(
             continue
         commitment.num_missed_in_a_row += 1
         await send_message_to_guild(
-            guild, f"@<{member.id}> failed accountability commitment: {commitment}"
+            guild, f"@<{member.user_id}> failed accountability commitment: {commitment}"
         )
         commitment.next_check_in = commitment.recurrence.next_occurence(
             commitment.next_check_in
@@ -70,12 +70,37 @@ class Accountabot(commands.Bot):
             self.members = pickle.load(f)
 
 
+class Accountability(commands.Cog):
+    """Commands to manage your accountability commitments"""
+
+    def __init__(self, bot: Accountabot):
+        self.bot = bot
+
+    @commands.command()
+    async def register(self, ctx: commands.Context, timezone: str):
+        """Register yourself as a new user"""
+        timezone = timezone.upper()
+        if timezone not in timezone_to_utc_offset:
+            invalid_timezone_message = (
+                f"Timezone '{timezone}' isn't valid\n"
+                f"Supported timezones: {', '.join(list(timezone_to_utc_offset.keys()))}"
+            )
+            await ctx.send(invalid_timezone_message)
+            return
+
+        member = ctx.author
+        if member in self.bot.members:
+            self.bot.members[member].timezone = timezone
+            await ctx.send(f"User successfully updated:\n{self.bot.members[member]}")
+        else:
+            new_member = AccountabilityMember(
+                user_id=member.id, commitments=[], is_active=True, timezone=timezone
+            )
+            self.bot.members[member] = new_member
+            await ctx.send(f"Registration successful!\n{new_member}")
+
+
 bot = Accountabot(command_prefix="&", intents=intents)
-
-
-@bot.command(name="test")
-async def test(context: commands.Context):
-    await context.send("Hello World!")
 
 
 @tasks.loop(hours=1)
@@ -86,15 +111,29 @@ async def commitment_check_loop():
             if member not in bot.members:
                 continue
             await check_commitments_of_member(guild, member)
-    bot.save()
+    bot.save(MEMBERS_FILE)
 
 
 @bot.event
 async def on_ready():
     if os.path.exists(MEMBERS_FILE):
         bot.load(MEMBERS_FILE)
+    await bot.add_cog(Accountability(bot))
     await wait_until_next_hour()
     commitment_check_loop.start()
+
+
+@bot.event
+async def on_command_error(ctx: commands.Context, error: Exception):
+    error_type_to_message = {
+        commands.errors.CommandNotFound: error,
+        commands.errors.MissingRequiredArgument: f"{ctx.command.name}: {error}",
+    }
+    error_type = type(error)
+    if error_type in error_type_to_message:
+        await ctx.send(error_type_to_message[error_type])
+    else:
+        raise error
 
 
 if __name__ == "__main__":

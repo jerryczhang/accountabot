@@ -61,7 +61,7 @@ class Commitment:
 
 @dataclass
 class AccountabilityMember:
-    id: int
+    user_id: int
     commitments: list[Commitment]
     is_active: bool
     timezone: str
