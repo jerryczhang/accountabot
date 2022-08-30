@@ -8,6 +8,7 @@ from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
 from .data import Commitment, AccountabilityMember, Recurrence, timezone_to_utc_offset
+from .test import C
 
 
 MEMBERS_FILE = "members.pkl"
@@ -70,6 +71,14 @@ class Accountabot(commands.Bot):
             self.members = pickle.load(f)
 
 
+timezone_parameter = commands.parameter(
+    converter=str,
+    default="PST",
+    description="Your timezone code (e.g. PST, PDT, EDT, etc.)",
+    displayed_default="PST",
+)
+
+
 class Accountability(commands.Cog):
     """Commands to manage your accountability commitments"""
 
@@ -77,8 +86,11 @@ class Accountability(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def register(self, ctx: commands.Context, timezone: str):
-        """Register yourself as a new user"""
+    async def register(self, ctx: commands.Context, timezone: str = timezone_parameter):
+        """
+        Register yourself as a new user
+        """
+
         timezone = timezone.upper()
         if timezone not in timezone_to_utc_offset:
             invalid_timezone_message = (
@@ -127,7 +139,7 @@ async def on_ready():
 async def on_command_error(ctx: commands.Context, error: Exception):
     error_type_to_message = {
         commands.errors.CommandNotFound: error,
-        commands.errors.MissingRequiredArgument: f"{ctx.command.name}: {error}",
+        commands.errors.MissingRequiredArgument: error,
     }
     error_type = type(error)
     if error_type in error_type_to_message:
