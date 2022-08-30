@@ -4,7 +4,7 @@ from enum import unique, IntEnum
 import os
 import pickle
 
-MEMBERS_FILE = "members.pkl"
+USERS_FILE = "users.pkl"
 
 timezone_to_utc_offset: dict[str, int] = {
     "HST": -10,
@@ -64,29 +64,29 @@ class Commitment:
 
 
 @dataclass
-class AccountabilityMember:
-    user_id: int
+class User:
+    member_id: int
     commitments: list[Commitment]
     is_active: bool
     timezone: str
 
 
 @dataclass
-class AccountabilityMembers:
-    members: dict[int, AccountabilityMember]
+class Users:
+    member_id_to_user: dict[int, User]
 
     def save(self) -> None:
-        with open(MEMBERS_FILE, "wb") as f:
-            pickle.dump(self.members, f)
+        with open(USERS_FILE, "wb") as f:
+            pickle.dump(self.member_id_to_user, f)
 
     def load(self) -> None:
-        if not os.path.exists(MEMBERS_FILE):
+        if not os.path.exists(USERS_FILE):
             return
-        with open(MEMBERS_FILE, "rb") as f:
-            self.members = pickle.load(f)
+        with open(USERS_FILE, "rb") as f:
+            self.member_id_to_user = pickle.load(f)
 
 
-accountability_members = AccountabilityMembers(members={})
+users = Users(member_id_to_user={})
 
 
 def days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:

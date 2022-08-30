@@ -2,7 +2,7 @@ from discord.ext import commands  # type: ignore
 
 from .data import User
 from .data import timezone_to_utc_offset
-from .data import accountability_members
+from .data import users
 
 
 timezone_parameter = commands.parameter(
@@ -32,14 +32,14 @@ class Accountability(commands.Cog):
             return
 
         member_id = ctx.author.id
-        members_dict = accountability_members.members
-        if member_id in members_dict:
-            members_dict[member_id].timezone = timezone
-            await ctx.send(f"User successfully updated:\n{members_dict[member_id]}")
+        if member_id in users.member_id_to_user:
+            user = users.member_id_to_user[member_id]
+            user.timezone = timezone
+            await ctx.send(f"User successfully updated:\n{user}")
         else:
-            new_member = User(
-                user_id=member_id, commitments=[], is_active=True, timezone=timezone
+            new_user = User(
+                member_id=member_id, commitments=[], is_active=True, timezone=timezone
             )
-            members_dict[member_id] = new_member
-            accountability_members.save()
-            await ctx.send(f"Registration successful!\n{new_member}")
+            users.member_id_to_user[member_id] = new_user
+            users.save()
+            await ctx.send(f"Registration successful!\n{new_user}")
