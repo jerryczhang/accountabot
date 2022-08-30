@@ -8,7 +8,6 @@ from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
 from .data import Commitment, AccountabilityMember, Recurrence, timezone_to_utc_offset
-from .test import C
 
 
 MEMBERS_FILE = "members.pkl"
