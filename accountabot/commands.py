@@ -73,15 +73,15 @@ class Accountability(commands.Cog):
         """
         Create a new accountability commitment
 
+        Examples:
+            &commit "Read" "Read for 30 min. before bed" "daily"
+            &commit "Workout" "PPL program + flexibility routine" "Weekly Mon,Wed,Fri"
+            &commit "Golden hour" "Do a golden hour at work" "weekly mon tue wed thu fri"
+
         Enclose each argument in quotes
 
         For the recurrence, either indicate "weekly" and specify the days of the week as a three-letter
         abbreviation (e.g. Sun, Mon, Tue, etc.), or indicate "daily"
-
-        Examples:
-            &commit "Read" "Read for 30 min. before bed" "daily"
-            &commit "Workout" "PPL program + flexibility routine" "Weekly Mon,Wed,Fri"
-            &commit "Golden hour" "Do a golden hour at work" "Weekly Mon,Tue,Wed,Thu,Fri"
         """
         try:
             recurrence_obj = parse_recurrence(recurrence)

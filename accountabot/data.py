@@ -48,6 +48,16 @@ class Commitment:
     recurrence: Recurrence
     num_missed_in_a_row: int
 
+    def __str__(self) -> str:
+        output_list = [
+            f"\n{self.name}:",
+            f"\tDescription: {self.description}",
+            f"\tNext check in: {self.next_check_in.strftime('%M %D')}",
+            f"\tRepeats {self.recurrence}",
+            f"\tNumber of misses in a row: {self.num_missed_in_a_row}",
+        ]
+        return "\n".join(output_list)
+
 
 @dataclass
 class User:
@@ -55,6 +65,19 @@ class User:
     commitments: list[Commitment]
     is_active: bool
     timezone: str
+
+    def __str__(self) -> str:
+        active = "Active" if self.is_active else "Inactive"
+        if self.commitments:
+            commitments = "\n".join([str(commitment) for commitment in commitments])
+        else:
+            commitments = "No commitments"
+        output_list = [
+            f"<@{self.member_id}> [{active}] (Timezone: {self.timezone})",
+            "".ljust(50, "-"),
+            f"{commitments}",
+        ]
+        return "\n".join(output_list)
 
 
 @dataclass
