@@ -2,24 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import unique, IntEnum
 import os
+from typing import TypeVar, Type
 import pickle
 
 USERS_FILE = "users.pkl"
-
-timezone_to_utc_offset: dict[str, int] = {
-    "HST": -10,
-    "HDT": -9,
-    "AKST": -9,
-    "AKDT": -8,
-    "PST": -8,
-    "PDT": -7,
-    "MST": -7,
-    "MDT": -6,
-    "CST": -6,
-    "CDT": -5,
-    "EST": -5,
-    "EDT": -4,
-}
 
 
 @unique
@@ -87,6 +73,49 @@ class Users:
 
 
 users = Users(member_id_to_user={})
+
+abbreviation_to_weekday: dict[str, Weekday] = {
+    "mon": Weekday.MONDAY,
+    "tue": Weekday.TUESDAY,
+    "wed": Weekday.WEDNESDAY,
+    "thu": Weekday.THURSDAY,
+    "fri": Weekday.FRIDAY,
+    "sat": Weekday.SATURDAY,
+    "sun": Weekday.SUNDAY,
+}
+
+timezone_to_utc_offset: dict[str, int] = {
+    "HST": -10,
+    "HDT": -9,
+    "AKST": -9,
+    "AKDT": -8,
+    "PST": -8,
+    "PDT": -7,
+    "MST": -7,
+    "MDT": -6,
+    "CST": -6,
+    "CDT": -5,
+    "EST": -5,
+    "EDT": -4,
+}
+
+
+def parse_recurrence(recurrence_str: str) -> Recurrence:
+    recurrence_str = recurrence_str.lower()
+    if "daily" in recurrence_str:
+        return Recurrence(Repetition.DAILY)
+    elif "weekly" in recurrence_str:
+        weekdays = []
+        for abv, weekday in abbreviation_to_weekday.items():
+            if abv in recurrence_str:
+                weekdays.append(weekday)
+        if not weekdays:
+            raise ValueError(
+                'Weekdays must be specified in a weekly occurence, e.g. "Sun", "Mon", "Tue", etc.'
+            )
+        return Recurrence(Repetition.WEEKLY, weekdays)
+    else:
+        raise ValueError('"daily" or "weekly" must be specified in recurrence')
 
 
 def days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:
