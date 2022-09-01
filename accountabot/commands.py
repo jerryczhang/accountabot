@@ -150,7 +150,7 @@ class Accountability(commands.Cog):
         """
         Display info about your commitment or profile
 
-        Specify the name of your commitment to it's info, or leave blank to get
+        Specify the name of your commitment to see its info, or leave blank to get
         your profile info
         """
         user = users.member_id_to_user[ctx.author.id]
