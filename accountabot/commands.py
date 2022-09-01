@@ -148,7 +148,22 @@ class Accountability(commands.Cog):
             users.save()
             await ctx.send(f"Checked in! {commitment}")
             return
-        await ctx.send(f'Accountability commitment "{name}" was not found')
+        await ctx.send(f'You don\'t have a commitment called "{name}"')
+
+    @commands.command()
+    @commands.check(_is_registered)
+    async def delete(self, ctx: commands.Context, name: str = _name_parameter):
+        """Delete an accountability commitment"""
+
+        user = users.member_id_to_user[ctx.author.id]
+        for index, commitment in enumerate(user.commitments):
+            if commitment.name != name:
+                continue
+            user.commitments.pop(index)
+            users.save()
+            await ctx.send(f"Deleted commitment {commitment}")
+            return
+        await ctx.send(f'You don\'t have a commitment called "{name}"')
 
 
 def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
