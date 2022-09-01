@@ -1,12 +1,12 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 
 import discord
 from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
-from .commands import Accountability, NotRegisteredError
+from .commands import Accountability, NotRegisteredError, CommitmentError
 from .data import User, users, user_time
 
 
@@ -32,6 +32,7 @@ async def on_command_error(ctx: commands.Context, error: Exception):
     redirected_errors = [
         commands.errors.CommandNotFound,
         commands.errors.MissingRequiredArgument,
+        CommitmentError,
         NotRegisteredError,
     ]
     if type(error) in redirected_errors:
@@ -81,7 +82,8 @@ async def _check_commitments_of_user(guild: discord.Guild, user: User) -> None:
             continue
         commitment.num_missed_in_a_row += 1
         await _send_message_to_guild(
-            guild, f"@<{user.member_id}> missed accountability commitment: {commitment}"
+            guild,
+            f"@everyone: <@{user.member_id}> missed accountability commitment: {commitment}",
         )
         commitment.cycle_check_in()
     users.save()
