@@ -22,6 +22,13 @@ _name_parameter = commands.parameter(
     converter=str, description="Name of the accountability commitment"
 )
 
+_optional_name_parameter = commands.parameter(
+    converter=str,
+    description="Name of the accountability commitment (Optional)",
+    default=None,
+    displayed_default="<Blank>",
+)
+
 _description_parameter = commands.parameter(
     converter=str,
     description="A more detailed description",
@@ -162,6 +169,26 @@ class Accountability(commands.Cog):
             user.commitments.pop(index)
             users.save()
             await ctx.send(f"Deleted commitment {commitment}")
+            return
+        await ctx.send(f'You don\'t have a commitment called "{name}"')
+
+    @commands.command()
+    @commands.check(_is_registered)
+    async def info(self, ctx: commands.Context, name: str = _optional_name_parameter):
+        """
+        Display info about your commitment or profile
+
+        Specify the name of your commitment to it's info, or leave blank to get
+        your profile info
+        """
+        user = users.member_id_to_user[ctx.author.id]
+        if name is None:
+            await ctx.send(str(user))
+            return
+        for commitment in user.commitments:
+            if commitment.name != name:
+                continue
+            await ctx.send(str(commitment))
             return
         await ctx.send(f'You don\'t have a commitment called "{name}"')
 
