@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import unique, IntEnum
 import os
 import pickle
+
+from discord.ext import commands
 
 
 USERS_FILE = "users.pkl"
@@ -38,6 +42,26 @@ class Recurrence:
         }
         return dt + timedelta(days=repetition_to_num_days[self.repetition])
 
+    @classmethod
+    async def convert(cls, _: commands.Context, argument: str) -> Recurrence:
+        recurrence_str = argument.lower()
+        if "daily" in recurrence_str:
+            return cls(Repetition.DAILY)
+        elif "weekly" in recurrence_str:
+            weekdays = []
+            for abv, weekday in _abbreviation_to_weekday.items():
+                if abv in recurrence_str:
+                    weekdays.append(weekday)
+            if not weekdays:
+                raise commands.errors.UserInputError(
+                    'Weekdays must be specified in a weekly occurence, e.g. "Sun", "Mon", "Tue", etc.'
+                )
+            return cls(Repetition.WEEKLY, weekdays)
+        else:
+            raise commands.errors.UserInputError(
+                '"daily" or "weekly" must be specified in recurrence'
+            )
+
     def __str__(self) -> str:
         if self.repetition == Repetition.DAILY:
             return "daily"
@@ -58,6 +82,20 @@ class Commitment:
     def cycle_check_in(self) -> None:
         self.next_check_in = self.recurrence.next_occurence(self.next_check_in)
 
+    @classmethod
+    async def convert(
+        cls, ctx: commands.Context, argument: str | None
+    ) -> Commitment | None:
+        if argument is None:
+            return None
+        user = users.member_id_to_user[ctx.author.id]
+        for commitment in user.commitments:
+            if commitment.name == argument:
+                return commitment
+        raise commands.errors.UserInputError(
+            f'You don\'t have a commitment called "{argument}"'
+        )
+
     def __str__(self) -> str:
         output_list = [
             f"\n{self.name}:",
@@ -70,11 +108,30 @@ class Commitment:
 
 
 @dataclass
+class Timezone:
+    code: str
+
+    @classmethod
+    async def convert(cls, _: commands.Context, argument: str) -> Timezone:
+        timezone_str = argument.upper()
+        if timezone_str not in _timezone_to_utc_offset:
+            supported_timezones = ", ".join(list(_timezone_to_utc_offset.keys()))
+            raise commands.errors.UserInputError(
+                f'Timezone "{timezone_str}" is not valid\n'
+                f"Supported timezones: {supported_timezones}"
+            )
+        return cls(timezone_str)
+
+    def __str__(self) -> str:
+        return self.code
+
+
+@dataclass
 class User:
     member_id: int
     commitments: list[Commitment]
     is_active: bool
-    timezone: str
+    timezone: Timezone
 
     def __str__(self) -> str:
         active = "Active" if self.is_active else "Inactive"
@@ -110,26 +167,8 @@ class Users:
 users = Users(member_id_to_user={})
 
 
-def parse_recurrence(recurrence_str: str) -> Recurrence:
-    recurrence_str = recurrence_str.lower()
-    if "daily" in recurrence_str:
-        return Recurrence(Repetition.DAILY)
-    elif "weekly" in recurrence_str:
-        weekdays = []
-        for abv, weekday in _abbreviation_to_weekday.items():
-            if abv in recurrence_str:
-                weekdays.append(weekday)
-        if not weekdays:
-            raise ValueError(
-                'Weekdays must be specified in a weekly occurence, e.g. "Sun", "Mon", "Tue", etc.'
-            )
-        return Recurrence(Repetition.WEEKLY, weekdays)
-    else:
-        raise ValueError('"daily" or "weekly" must be specified in recurrence')
-
-
 def user_time(user: User, dt: datetime):
-    return dt + timedelta(hours=_timezone_to_utc_offset[user.timezone])
+    return dt + timedelta(hours=_timezone_to_utc_offset[user.timezone.code])
 
 
 _timezone_to_utc_offset: dict[str, int] = {
@@ -147,7 +186,6 @@ _timezone_to_utc_offset: dict[str, int] = {
     "EDT": -4,
 }
 
-supported_timezones: list[str] = list(_timezone_to_utc_offset.keys())
 
 _abbreviation_to_weekday: dict[str, Weekday] = {
     "mon": Weekday.MONDAY,

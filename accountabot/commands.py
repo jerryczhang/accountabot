@@ -5,55 +5,42 @@ from discord.ext import commands  # type: ignore
 from .data import User
 from .data import Commitment
 from .data import Recurrence
+from .data import Timezone
 from .data import users
 from .data import user_time
-from .data import supported_timezones
-from .data import parse_recurrence
 
 
 _timezone_parameter = commands.parameter(
-    converter=str,
     description="Your timezone code (e.g. PST, PDT, EDT, etc.)",
-    default="PST",
-    displayed_default="PST",
 )
 
-_name_parameter = commands.parameter(
-    converter=str, description="Name of the accountability commitment"
+_commitment_parameter = commands.parameter(
+    description="The name of your commitment",
 )
 
-_optional_name_parameter = commands.parameter(
-    converter=str,
-    description="Name of the accountability commitment (Optional)",
+_optional_commitment_parameter = commands.parameter(
+    description="The name of your commitment",
     default=None,
-    displayed_default="<Blank>",
+    displayed_default=None,
+)
+
+_commitment_name_parameter = commands.parameter(
+    description="What do you want to commit to?",
 )
 
 _description_parameter = commands.parameter(
-    converter=str,
-    description="A more detailed description",
+    description="A detailed description",
 )
 
 _recurrence_parameter = commands.parameter(
-    converter=str,
-    description="How often your commitment repeats",
-    default="daily",
-    displayed_default="Daily",
+    description="How often your commitment repeats"
 )
-
-
-class NotRegisteredError(commands.CommandError):
-    ...
-
-
-class CommitmentError(commands.CommandError):
-    ...
 
 
 async def _is_registered(ctx: commands.Context):
     is_registered = ctx.author.id in users.member_id_to_user
     if not is_registered:
-        raise NotRegisteredError(
+        raise commands.errors.UserInputError(
             f"You must register yourself as a user first!\n"
             'Type "&register <your_timezone>"'
         )
@@ -65,11 +52,10 @@ class Accountability(commands.Cog):
 
     @commands.command()
     async def register(
-        self, ctx: commands.Context, timezone: str = _timezone_parameter
+        self, ctx: commands.Context, timezone: Timezone = _timezone_parameter
     ):
         """Register yourself as a new user, or update your existing profile"""
 
-        _check_timezone(timezone)
         member_id = ctx.author.id
         if member_id in users.member_id_to_user:
             user = users.member_id_to_user[member_id]
@@ -87,9 +73,9 @@ class Accountability(commands.Cog):
     async def commit(
         self,
         ctx: commands.Context,
-        name: str = _name_parameter,
+        name: str = _commitment_name_parameter,
         description: str = _description_parameter,
-        recurrence: str = _recurrence_parameter,
+        recurrence: Recurrence = _recurrence_parameter,
     ):
         """
         Create a new commitment, or update existing commitment by name
@@ -104,24 +90,19 @@ class Accountability(commands.Cog):
         For the recurrence, either indicate "weekly" and specify the days of the week as a three-letter
         abbreviation (e.g. Sun, Mon, Tue, etc.), or indicate "daily"
         """
-        try:
-            recurrence_obj = parse_recurrence(recurrence)
-        except ValueError as ex:
-            await ctx.send(str(ex))
-
         user = users.member_id_to_user[ctx.author.id]
         commitment = _find_commitment(user, name)
         if commitment:
             commitment.description = description
-            commitment.recurrence = recurrence_obj
+            commitment.recurrence = recurrence
             await _save_and_message(ctx, f"Commitment updated: {commitment}")
         else:
             new_commitment = Commitment(
                 owner_id=user.member_id,
                 name=name,
                 description=description,
-                next_check_in=_first_check_in(user, recurrence_obj),
-                recurrence=recurrence_obj,
+                next_check_in=_first_check_in(user, recurrence),
+                recurrence=recurrence,
                 num_missed_in_a_row=0,
             )
             user.commitments.append(new_commitment)
@@ -129,19 +110,17 @@ class Accountability(commands.Cog):
 
     @commands.command(name="check-in")
     @commands.check(_is_registered)
-    async def check_in(self, ctx: commands.Context, name: str = _name_parameter):
+    async def check_in(
+        self, ctx: commands.Context, commitment: Commitment = _commitment_parameter
+    ):
         """Check in your accountability commitment (mark as completed)"""
 
         user = users.member_id_to_user[ctx.author.id]
-        commitment = _find_commitment(user, name)
-        if not commitment:
-            raise CommitmentError(f'You don\'t have a commitment called "{name}"')
-
         time_until_commitment = commitment.next_check_in - user_time(
             user, datetime.now()
         )
         if time_until_commitment.days >= 1:
-            raise CommitmentError(
+            raise commands.errors.UserInputError(
                 "You aren't supposed to do this commitment yet! "
                 f"Next check in is in {time_until_commitment.days} more day(s)"
             )
@@ -152,19 +131,22 @@ class Accountability(commands.Cog):
 
     @commands.command()
     @commands.check(_is_registered)
-    async def delete(self, ctx: commands.Context, name: str = _name_parameter):
+    async def delete(
+        self, ctx: commands.Context, commitment: Commitment = _commitment_parameter
+    ):
         """Delete an accountability commitment"""
 
         user = users.member_id_to_user[ctx.author.id]
-        commitment = _find_commitment(user, name)
-        if not commitment:
-            raise CommitmentError(f'You don\'t have a commitment called "{name}"')
         user.commitments.remove(commitment)
         await _save_and_message(ctx, f"Deleted commitment {commitment}")
 
     @commands.command()
     @commands.check(_is_registered)
-    async def info(self, ctx: commands.Context, name: str = _optional_name_parameter):
+    async def info(
+        self,
+        ctx: commands.Context,
+        commitment: Commitment = _optional_commitment_parameter,
+    ):
         """
         Display info about your commitment or profile
 
@@ -172,13 +154,9 @@ class Accountability(commands.Cog):
         your profile info
         """
         user = users.member_id_to_user[ctx.author.id]
-        if name is None:
+        if commitment is None:
             await ctx.send(str(user))
             return
-
-        commitment = _find_commitment(user, name)
-        if not commitment:
-            raise CommitmentError(f'You don\'t have a commitment called "{name}"')
         await ctx.send(str(commitment))
 
 
@@ -200,13 +178,3 @@ def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
 async def _save_and_message(ctx: commands.Context, message: str) -> None:
     users.save()
     await ctx.send(message)
-
-
-def _check_timezone(timezone: str) -> None:
-    timezone = timezone.upper()
-    if timezone not in supported_timezones:
-        invalid_timezone_message = (
-            f"Timezone '{timezone}' isn't valid\n"
-            f"Supported timezones: {', '.join(supported_timezones)}"
-        )
-        raise CommitmentError(invalid_timezone_message)

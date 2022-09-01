@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
-from .commands import Accountability, NotRegisteredError, CommitmentError
+from .commands import Accountability
 from .data import User, users, user_time
 
 
@@ -32,8 +32,8 @@ async def on_command_error(ctx: commands.Context, error: Exception):
     redirected_errors = [
         commands.errors.CommandNotFound,
         commands.errors.MissingRequiredArgument,
-        CommitmentError,
-        NotRegisteredError,
+        commands.errors.UserInputError,
+        commands.errors.UserNotFound,
     ]
     if type(error) in redirected_errors:
         await ctx.send(error)
