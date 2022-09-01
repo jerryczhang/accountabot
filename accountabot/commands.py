@@ -5,8 +5,9 @@ from discord.ext import commands  # type: ignore
 from .data import User
 from .data import Commitment
 from .data import Recurrence
-from .data import timezone_to_utc_offset
 from .data import users
+from .data import user_time
+from .data import supported_timezones
 from .data import parse_recurrence
 
 
@@ -18,7 +19,7 @@ _timezone_parameter = commands.parameter(
 )
 
 _name_parameter = commands.parameter(
-    converter=str, description="What you want to commit to"
+    converter=str, description="Name of the accountability commitment"
 )
 
 _description_parameter = commands.parameter(
@@ -58,10 +59,10 @@ class Accountability(commands.Cog):
         """Register yourself as a new user, or update your existing profile"""
 
         timezone = timezone.upper()
-        if timezone not in timezone_to_utc_offset:
+        if timezone not in supported_timezones:
             invalid_timezone_message = (
                 f"Timezone '{timezone}' isn't valid\n"
-                f"Supported timezones: {', '.join(list(timezone_to_utc_offset.keys()))}"
+                f"Supported timezones: {', '.join(supported_timezones)}"
             )
             await ctx.send(invalid_timezone_message)
             return
@@ -89,7 +90,7 @@ class Accountability(commands.Cog):
         recurrence: str = _recurrence_parameter,
     ):
         """
-        Create a new accountability commitment, or update an existing commitment with the same name
+        Create a new commitment, or update existing commitment by name
 
         Examples:
             &commit "Read" "Read for 30 min. before bed" "daily"
@@ -126,11 +127,33 @@ class Accountability(commands.Cog):
         users.save()
         await ctx.send(f"New commitment: {new_commitment}")
 
+    @commands.command(name="check-in")
+    @commands.check(_is_registered)
+    async def check_in(self, ctx: commands.Context, name: str = _name_parameter):
+        """Check in your accountability commitment (mark as completed)"""
+
+        user = users.member_id_to_user[ctx.author.id]
+        for commitment in user.commitments:
+            if commitment.name != name:
+                continue
+            time_difference = commitment.next_check_in - user_time(user, datetime.now())
+            if time_difference.days >= 1:
+                await ctx.send(
+                    "You aren't supposed to do this commitment yet! "
+                    f"Next check in is in {time_difference.days} more day(s)"
+                )
+                return
+            commitment.num_missed_in_a_row = 0
+            commitment.cycle_check_in()
+            users.save()
+            await ctx.send(f"Checked in! {commitment}")
+            return
+        await ctx.send(f'Accountability commitment "{name}" was not found')
+
 
 def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
-    now = datetime.now()
+    now = user_time(user, datetime.now().utcnow())
     midnight = datetime(
         year=now.year, month=now.month, day=now.day, hour=23, minute=59, second=59
     )
-    user_midnight = midnight + timedelta(hours=timezone_to_utc_offset[user.timezone])
-    return recurrence.next_occurence(user_midnight - timedelta(days=1))
+    return recurrence.next_occurence(midnight - timedelta(days=1))

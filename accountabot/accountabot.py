@@ -7,7 +7,7 @@ from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
 from .commands import Accountability, NotRegisteredError
-from .data import User, users, timezone_to_utc_offset
+from .data import User, users, user_time
 
 
 intents = discord.Intents.all()
@@ -76,17 +76,15 @@ async def _send_message_to_guild(guild: discord.Guild, message: str) -> None:
 
 async def _check_commitments_of_user(guild: discord.Guild, user: User) -> None:
     now = datetime.now().utcnow()
-    user_time = now + timedelta(hours=timezone_to_utc_offset[user.timezone])
     for commitment in user.commitments:
-        if user_time < commitment.next_check_in:
+        if user_time(user, now) < commitment.next_check_in:
             continue
         commitment.num_missed_in_a_row += 1
         await _send_message_to_guild(
             guild, f"@<{user.member_id}> missed accountability commitment: {commitment}"
         )
-        commitment.next_check_in = commitment.recurrence.next_occurence(
-            commitment.next_check_in
-        )
+        commitment.cycle_check_in()
+    users.save()
 
 
 if __name__ == "__main__":

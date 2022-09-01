@@ -55,6 +55,9 @@ class Commitment:
     recurrence: Recurrence
     num_missed_in_a_row: int
 
+    def cycle_check_in(self) -> None:
+        self.next_check_in = self.recurrence.next_occurence(self.next_check_in)
+
     def __str__(self) -> str:
         output_list = [
             f"\n{self.name}:",
@@ -106,21 +109,6 @@ class Users:
 
 users = Users(member_id_to_user={})
 
-timezone_to_utc_offset: dict[str, int] = {
-    "HST": -10,
-    "HDT": -9,
-    "AKST": -9,
-    "AKDT": -8,
-    "PST": -8,
-    "PDT": -7,
-    "MST": -7,
-    "MDT": -6,
-    "CST": -6,
-    "CDT": -5,
-    "EST": -5,
-    "EDT": -4,
-}
-
 
 def parse_recurrence(recurrence_str: str) -> Recurrence:
     recurrence_str = recurrence_str.lower()
@@ -139,6 +127,27 @@ def parse_recurrence(recurrence_str: str) -> Recurrence:
     else:
         raise ValueError('"daily" or "weekly" must be specified in recurrence')
 
+
+def user_time(user: User, dt: datetime):
+    return dt + timedelta(hours=_timezone_to_utc_offset[user.timezone])
+
+
+_timezone_to_utc_offset: dict[str, int] = {
+    "HST": -10,
+    "HDT": -9,
+    "AKST": -9,
+    "AKDT": -8,
+    "PST": -8,
+    "PDT": -7,
+    "MST": -7,
+    "MDT": -6,
+    "CST": -6,
+    "CDT": -5,
+    "EST": -5,
+    "EDT": -4,
+}
+
+supported_timezones: list[str] = list(_timezone_to_utc_offset.keys())
 
 _abbreviation_to_weekday: dict[str, Weekday] = {
     "mon": Weekday.MONDAY,
