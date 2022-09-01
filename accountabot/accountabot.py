@@ -1,10 +1,8 @@
 import asyncio
 from datetime import datetime
-import os
 
 import discord
 from discord.ext import commands, tasks  # type: ignore
-from dotenv import load_dotenv
 
 from .commands import Accountability
 from .data import User, users, user_time
@@ -87,9 +85,3 @@ async def _check_commitments_of_user(guild: discord.Guild, user: User) -> None:
         )
         commitment.cycle_check_in()
     users.save()
-
-
-if __name__ == "__main__":
-    load_dotenv()
-
-    bot.run(os.getenv("DISCORD_TOKEN"))
