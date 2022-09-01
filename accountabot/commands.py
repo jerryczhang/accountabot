@@ -10,23 +10,23 @@ from .data import users
 from .data import parse_recurrence
 
 
-timezone_parameter = commands.parameter(
+_timezone_parameter = commands.parameter(
     converter=str,
     description="Your timezone code (e.g. PST, PDT, EDT, etc.)",
     default="PST",
     displayed_default="PST",
 )
 
-name_parameter = commands.parameter(
+_name_parameter = commands.parameter(
     converter=str, description="What you want to commit to"
 )
 
-description_parameter = commands.parameter(
+_description_parameter = commands.parameter(
     converter=str,
     description="A more detailed description",
 )
 
-recurrence_parameter = commands.parameter(
+_recurrence_parameter = commands.parameter(
     converter=str,
     description="How often your commitment repeats",
     default="daily",
@@ -38,7 +38,7 @@ class NotRegisteredError(commands.CommandError):
     ...
 
 
-async def is_registered(ctx: commands.Context):
+async def _is_registered(ctx: commands.Context):
     is_registered = ctx.author.id in users.member_id_to_user
     if not is_registered:
         raise NotRegisteredError(
@@ -52,7 +52,9 @@ class Accountability(commands.Cog):
     """Commands to manage your accountability commitments"""
 
     @commands.command()
-    async def register(self, ctx: commands.Context, timezone: str = timezone_parameter):
+    async def register(
+        self, ctx: commands.Context, timezone: str = _timezone_parameter
+    ):
         """Register yourself as a new user, or update your existing profile"""
 
         timezone = timezone.upper()
@@ -78,13 +80,13 @@ class Accountability(commands.Cog):
             await ctx.send(f"Registered!\n{new_user}")
 
     @commands.command()
-    @commands.check(is_registered)
+    @commands.check(_is_registered)
     async def commit(
         self,
         ctx: commands.Context,
-        name: str = name_parameter,
-        description: str = description_parameter,
-        recurrence: str = recurrence_parameter,
+        name: str = _name_parameter,
+        description: str = _description_parameter,
+        recurrence: str = _recurrence_parameter,
     ):
         """
         Create a new accountability commitment, or update an existing commitment with the same name
@@ -116,7 +118,7 @@ class Accountability(commands.Cog):
             owner_id=user.member_id,
             name=name,
             description=description,
-            next_check_in=first_check_in(user, recurrence_obj),
+            next_check_in=_first_check_in(user, recurrence_obj),
             recurrence=recurrence_obj,
             num_missed_in_a_row=0,
         )
@@ -125,7 +127,7 @@ class Accountability(commands.Cog):
         await ctx.send(f"New commitment: {new_commitment}")
 
 
-def first_check_in(user: User, recurrence: Recurrence) -> datetime:
+def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
     now = datetime.now()
     midnight = datetime(
         year=now.year, month=now.month, day=now.day, hour=23, minute=59, second=59

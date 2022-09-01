@@ -4,6 +4,7 @@ from enum import unique, IntEnum
 import os
 import pickle
 
+
 USERS_FILE = "users.pkl"
 
 
@@ -33,7 +34,7 @@ class Recurrence:
         dt.month
         repetition_to_num_days = {
             Repetition.DAILY: 1,
-            Repetition.WEEKLY: days_until_valid_weekday(dt, self.weekdays),
+            Repetition.WEEKLY: _days_until_valid_weekday(dt, self.weekdays),
         }
         return dt + timedelta(days=repetition_to_num_days[self.repetition])
 
@@ -105,16 +106,6 @@ class Users:
 
 users = Users(member_id_to_user={})
 
-abbreviation_to_weekday: dict[str, Weekday] = {
-    "mon": Weekday.MONDAY,
-    "tue": Weekday.TUESDAY,
-    "wed": Weekday.WEDNESDAY,
-    "thu": Weekday.THURSDAY,
-    "fri": Weekday.FRIDAY,
-    "sat": Weekday.SATURDAY,
-    "sun": Weekday.SUNDAY,
-}
-
 timezone_to_utc_offset: dict[str, int] = {
     "HST": -10,
     "HDT": -9,
@@ -137,7 +128,7 @@ def parse_recurrence(recurrence_str: str) -> Recurrence:
         return Recurrence(Repetition.DAILY)
     elif "weekly" in recurrence_str:
         weekdays = []
-        for abv, weekday in abbreviation_to_weekday.items():
+        for abv, weekday in _abbreviation_to_weekday.items():
             if abv in recurrence_str:
                 weekdays.append(weekday)
         if not weekdays:
@@ -149,7 +140,18 @@ def parse_recurrence(recurrence_str: str) -> Recurrence:
         raise ValueError('"daily" or "weekly" must be specified in recurrence')
 
 
-def days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:
+_abbreviation_to_weekday: dict[str, Weekday] = {
+    "mon": Weekday.MONDAY,
+    "tue": Weekday.TUESDAY,
+    "wed": Weekday.WEDNESDAY,
+    "thu": Weekday.THURSDAY,
+    "fri": Weekday.FRIDAY,
+    "sat": Weekday.SATURDAY,
+    "sun": Weekday.SUNDAY,
+}
+
+
+def _days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:
     if not valid_weekdays:
         return -1
     current_weekday = dt.weekday()
