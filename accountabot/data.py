@@ -37,6 +37,13 @@ class Recurrence:
         }
         return dt + timedelta(days=repetition_to_num_days[self.repetition])
 
+    def __str__(self) -> str:
+        if self.repetition == Repetition.DAILY:
+            return "daily"
+        else:
+            weekdays = ", ".join(weekday.name.title() for weekday in self.weekdays)
+            return f"weekly on {weekdays}"
+
 
 @dataclass
 class Commitment:
@@ -51,9 +58,9 @@ class Commitment:
         output_list = [
             f"\n{self.name}:",
             f"\tDescription: {self.description}",
-            f"\tNext check in: {self.next_check_in.strftime('%M %D')}",
-            f"\tRepeats {self.recurrence}",
+            f"\tNext check in: {self.next_check_in.strftime('%a, %b %d')}",
             f"\tNumber of misses in a row: {self.num_missed_in_a_row}",
+            f"\tRepeats {self.recurrence}",
         ]
         return "\n".join(output_list)
 
@@ -72,13 +79,13 @@ class User:
                 [str(commitment) for commitment in self.commitments]
             )
         else:
-            commitments = "No commitments"
+            commitments = "\nNo commitments"
         output_list = [
-            f"<@{self.member_id}> [{active}] (Timezone: {self.timezone})",
-            "".ljust(50, "-"),
+            f"<@{self.member_id}> [{active}] (Timezone: {self.timezone})\n",
+            "".rjust(50, "-"),
             f"{commitments}",
         ]
-        return "\n".join(output_list)
+        return "".join(output_list)
 
 
 @dataclass

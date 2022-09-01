@@ -69,6 +69,10 @@ async def commitment_check_loop():
 async def on_ready():
     users.load()
     await bot.add_cog(Accountability(bot))
+    activity = discord.Activity(
+        type=discord.ActivityType.listening, name=f"{bot.command_prefix}help"
+    )
+    await bot.change_presence(activity=activity)
 
     await wait_until_next_hour()
     commitment_check_loop.start()

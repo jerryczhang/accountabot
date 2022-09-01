@@ -53,7 +53,7 @@ class Accountability(commands.Cog):
 
     @commands.command()
     async def register(self, ctx: commands.Context, timezone: str = timezone_parameter):
-        """Register yourself as a new user"""
+        """Register yourself as a new user, or update your existing profile"""
 
         timezone = timezone.upper()
         if timezone not in timezone_to_utc_offset:
@@ -87,7 +87,7 @@ class Accountability(commands.Cog):
         recurrence: str = recurrence_parameter,
     ):
         """
-        Create a new accountability commitment
+        Create a new accountability commitment, or update an existing commitment with the same name
 
         Examples:
             &commit "Read" "Read for 30 min. before bed" "daily"
