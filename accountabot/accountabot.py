@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands, tasks  # type: ignore
 from dotenv import load_dotenv
 
-from .commands import Accountability
+from .commands import Accountability, NotRegisteredError
 from .data import User, users, timezone_to_utc_offset
 
 
@@ -76,13 +76,13 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error: Exception):
-    error_type_to_message = {
-        commands.errors.CommandNotFound: error,
-        commands.errors.MissingRequiredArgument: error,
-    }
-    error_type = type(error)
-    if error_type in error_type_to_message:
-        await ctx.send(error_type_to_message[error_type])
+    redirected_errors = [
+        commands.errors.CommandNotFound,
+        commands.errors.MissingRequiredArgument,
+        NotRegisteredError,
+    ]
+    if type(error) in redirected_errors:
+        await ctx.send(error)
     else:
         raise error
 

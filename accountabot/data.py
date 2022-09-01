@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import unique, IntEnum
 import os
-from typing import TypeVar, Type
 import pickle
 
 USERS_FILE = "users.pkl"
@@ -69,7 +68,9 @@ class User:
     def __str__(self) -> str:
         active = "Active" if self.is_active else "Inactive"
         if self.commitments:
-            commitments = "\n".join([str(commitment) for commitment in commitments])
+            commitments = "\n".join(
+                [str(commitment) for commitment in self.commitments]
+            )
         else:
             commitments = "No commitments"
         output_list = [

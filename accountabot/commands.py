@@ -1,9 +1,10 @@
+from datetime import datetime, timedelta
+
 from discord.ext import commands  # type: ignore
 
 from .data import User
+from .data import Commitment
 from .data import Recurrence
-from .data import Repetition
-from .data import Weekday
 from .data import timezone_to_utc_offset
 from .data import users
 from .data import parse_recurrence
@@ -33,6 +34,20 @@ recurrence_parameter = commands.parameter(
 )
 
 
+class NotRegisteredError(commands.CommandError):
+    ...
+
+
+async def is_registered(ctx: commands.Context):
+    is_registered = ctx.author.id in users.member_id_to_user
+    if not is_registered:
+        raise NotRegisteredError(
+            f"You must register yourself as a user first!\n"
+            'Type "&register <your_timezone>"'
+        )
+    return True
+
+
 class Accountability(commands.Cog):
     """Commands to manage your accountability commitments"""
 
@@ -53,16 +68,17 @@ class Accountability(commands.Cog):
         if member_id in users.member_id_to_user:
             user = users.member_id_to_user[member_id]
             user.timezone = timezone
-            await ctx.send(f"User successfully updated:\n{user}")
+            await ctx.send(f"User updated:\n{user}")
         else:
             new_user = User(
                 member_id=member_id, commitments=[], is_active=True, timezone=timezone
             )
             users.member_id_to_user[member_id] = new_user
             users.save()
-            await ctx.send(f"Registration successful!\n{new_user}")
+            await ctx.send(f"Registered!\n{new_user}")
 
     @commands.command()
+    @commands.check(is_registered)
     async def commit(
         self,
         ctx: commands.Context,
@@ -87,3 +103,32 @@ class Accountability(commands.Cog):
             recurrence_obj = parse_recurrence(recurrence)
         except ValueError as ex:
             await ctx.send(str(ex))
+
+        user = users.member_id_to_user[ctx.author.id]
+        for commitment in user.commitments:
+            if name == commitment.name:
+                commitment.description = description
+                commitment.recurrence = recurrence_obj
+                users.save()
+                await ctx.send(f"Commitment updated: {commitment}")
+                return
+        new_commitment = Commitment(
+            owner_id=user.member_id,
+            name=name,
+            description=description,
+            next_check_in=first_check_in(user, recurrence_obj),
+            recurrence=recurrence_obj,
+            num_missed_in_a_row=0,
+        )
+        user.commitments.append(new_commitment)
+        users.save()
+        await ctx.send(f"New commitment: {new_commitment}")
+
+
+def first_check_in(user: User, recurrence: Recurrence) -> datetime:
+    now = datetime.now()
+    midnight = datetime(
+        year=now.year, month=now.month, day=now.day, hour=23, minute=59, second=59
+    )
+    user_midnight = midnight + timedelta(hours=timezone_to_utc_offset[user.timezone])
+    return recurrence.next_occurence(user_midnight - timedelta(days=1))
