@@ -1,0 +1,1 @@
+from .accountabot import bot
