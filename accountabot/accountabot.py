@@ -46,6 +46,8 @@ async def _commitment_check_loop():
             if member.id not in users.member_id_to_user:
                 continue
             user = users.member_id_to_user[member.id]
+            if not user.is_active:
+                continue
             await _check_commitments_of_user(guild, user)
     users.save()
 

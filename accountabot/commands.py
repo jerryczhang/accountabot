@@ -159,6 +159,14 @@ class Accountability(commands.Cog):
             return
         await ctx.send(str(commitment))
 
+    @commands.command(name="toggle-active")
+    @commands.check(_is_registered)
+    async def toggle_active(self, ctx: commands.Context):
+        """Toggles your profile between active and inactive"""
+        user = users.member_id_to_user[ctx.author.id]
+        user.is_active = not user.is_active
+        await ctx.send(f"User activity updated:\n{user}")
+
 
 def _find_commitment(user: User, commitment_name: str) -> Commitment | None:
     for commitment in user.commitments:
