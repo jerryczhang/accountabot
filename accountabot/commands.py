@@ -162,6 +162,19 @@ class Accountability(commands.Cog):
 
     @commands.command()
     @commands.check(_is_registered)
+    async def remind(
+        self,
+        ctx: commands.Context,
+        commitment: Commitment = _commitment_parameter,
+        reminder: _Time = _optional_reminder_parameter,
+    ):
+        """Set up or remove a reminder"""
+
+        commitment.reminder = reminder
+        await _save_and_message(ctx, f"Commitment updated: {commitment}")
+
+    @commands.command()
+    @commands.check(_is_registered)
     async def info(
         self,
         ctx: commands.Context,
