@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from discord.ext import commands  # type: ignore
 
@@ -36,6 +36,11 @@ _recurrence_parameter = commands.parameter(
     description="How often your commitment repeats"
 )
 
+_optional_reminder_parameter = commands.parameter(
+    description='When to be reminded in format "H:MM AM/PM"',
+    default=None,
+)
+
 
 async def _is_registered(ctx: commands.Context):
     is_registered = ctx.author.id in users.member_id_to_user
@@ -45,6 +50,16 @@ async def _is_registered(ctx: commands.Context):
             'Type "&register <your_timezone>"'
         )
     return True
+
+
+class _Time(commands.Converter):
+    async def convert(self, ctx: commands.Context, argument: str) -> time:
+        try:
+            return datetime.strptime(argument.upper(), "%I:%M %p").time()
+        except ValueError:
+            raise commands.errors.UserInputError(
+                f'Cannot parse time "{argument}", make sure to use format "H:MM AM/PM"'
+            )
 
 
 class Accountability(commands.Cog):
@@ -76,25 +91,29 @@ class Accountability(commands.Cog):
         name: str = _commitment_name_parameter,
         description: str = _description_parameter,
         recurrence: Recurrence = _recurrence_parameter,
+        reminder: _Time = _optional_reminder_parameter,
     ):
         """
         Create a new commitment, or update existing commitment by name
 
         Examples:
             &commit "Read" "Read for 30 min. before bed" "daily"
-            &commit "Workout" "PPL program + flexibility routine" "Weekly Mon,Wed,Fri"
+            &commit "Workout" "PPL program + flexibility routine" "Weekly Mon,Wed,Fri" "9:00 AM"
             &commit "Golden hour" "Do a golden hour at work" "weekly mon tue wed thu fri"
 
         Enclose each argument in quotes
 
         For the recurrence, either indicate "weekly" and specify the days of the week as a three-letter
         abbreviation (e.g. Sun, Mon, Tue, etc.), or indicate "daily"
+
+        For the reminder, indicate the time in format "H:MM AM/PM", or leave blank for no reminder
         """
         user = users.member_id_to_user[ctx.author.id]
         commitment = _find_commitment(user, name)
         if commitment:
             commitment.description = description
             commitment.recurrence = recurrence
+            commitment.reminder = reminder
             await _save_and_message(ctx, f"Commitment updated: {commitment}")
         else:
             new_commitment = Commitment(
@@ -104,6 +123,7 @@ class Accountability(commands.Cog):
                 next_check_in=_first_check_in(user, recurrence),
                 recurrence=recurrence,
                 num_missed_in_a_row=0,
+                reminder=reminder,
             )
             user.commitments.append(new_commitment)
             await _save_and_message(ctx, f"New commitment: {new_commitment}")

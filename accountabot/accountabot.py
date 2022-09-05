@@ -1,5 +1,5 @@
-import asyncio
 from datetime import datetime
+import logging
 
 import discord
 from discord.ext import commands, tasks  # type: ignore
@@ -8,6 +8,7 @@ from .commands import Accountability
 from .data import User, users, user_time
 
 
+logger = logging.getLogger("discord")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="&", intents=intents)
 
@@ -21,7 +22,6 @@ async def on_ready():
     )
     await bot.change_presence(activity=activity)
 
-    await _wait_until_next_hour()
     _commitment_check_loop.start()
 
 
@@ -39,7 +39,7 @@ async def on_command_error(ctx: commands.Context, error: Exception):
         raise error
 
 
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def _commitment_check_loop():
     for guild in bot.guilds:
         for member in guild.members:
@@ -48,19 +48,9 @@ async def _commitment_check_loop():
             user = users.member_id_to_user[member.id]
             if not user.is_active:
                 continue
-            await _check_commitments_of_user(guild, user)
+            await _check_commitment_check_ins_of_user(guild, user)
+            await _check_commitment_reminders_of_user(guild, user)
     users.save()
-
-
-async def _wait_until_next_hour() -> None:
-    now = datetime.now()
-    next_hour = datetime(
-        year=now.year,
-        month=now.month,
-        day=now.day,
-        hour=now.hour + 1,
-    )
-    await asyncio.sleep((next_hour - datetime.now()).total_seconds())
 
 
 async def _send_message_to_guild(guild: discord.Guild, message: str) -> None:
@@ -70,15 +60,16 @@ async def _send_message_to_guild(guild: discord.Guild, message: str) -> None:
             return
         except discord.errors.Forbidden:
             continue
-    raise RuntimeError(
+    logger.warn(
         f"Unable to find a channel in guild#{guild.id} with permissions to send message"
     )
 
 
-async def _check_commitments_of_user(guild: discord.Guild, user: User) -> None:
+async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) -> None:
     now = datetime.now().utcnow()
+    user_now = user_time(user, now)
     for commitment in user.commitments:
-        if user_time(user, now) < commitment.next_check_in:
+        if user_now < commitment.next_check_in:
             continue
         commitment.num_missed_in_a_row += 1
         await _send_message_to_guild(
@@ -87,3 +78,21 @@ async def _check_commitments_of_user(guild: discord.Guild, user: User) -> None:
         )
         commitment.cycle_check_in()
     users.save()
+
+
+async def _check_commitment_reminders_of_user(guild: discord.Guild, user: User) -> None:
+    now = datetime.now().utcnow()
+    user_now = user_time(user, now)
+    for commitment in user.commitments:
+        reminder = commitment.reminder
+        if (
+            reminder is None
+            or user_now.hour != reminder.hour
+            or user_now.minute != reminder.minute
+            or user_now.date() != commitment.next_check_in.date()
+        ):
+            continue
+        await _send_message_to_guild(
+            guild,
+            f"Reminder for <@{user.member_id}>: {commitment}",
+        )

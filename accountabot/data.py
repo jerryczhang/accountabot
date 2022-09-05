@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from enum import unique, IntEnum
 import os
 import pickle
@@ -78,6 +78,7 @@ class Commitment:
     next_check_in: datetime
     recurrence: Recurrence
     num_missed_in_a_row: int
+    reminder: time | None
 
     def cycle_check_in(self) -> None:
         self.next_check_in = self.recurrence.next_occurence(self.next_check_in)
@@ -101,6 +102,7 @@ class Commitment:
             f"\n{self.name}:",
             f"\tDescription: {self.description}",
             f"\tNext check in: {self.next_check_in.strftime('%a, %b %d')}",
+            f"\tReminder: {self.reminder.strftime('%I:%M %p') if self.reminder else None}",
             f"\tNumber of misses in a row: {self.num_missed_in_a_row}",
             f"\tRepeats {self.recurrence}",
         ]
