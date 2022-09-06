@@ -71,12 +71,11 @@ async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) 
     for commitment in user.commitments:
         if user_now < commitment.next_check_in:
             continue
-        commitment.num_missed_in_a_row += 1
+        commitment.cycle_check_in(missed=True)
         await _send_message_to_guild(
             guild,
             f"@everyone: <@{user.member_id}> missed accountability commitment: {commitment}",
         )
-        commitment.cycle_check_in()
     users.save()
 
 

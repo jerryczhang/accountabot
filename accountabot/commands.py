@@ -122,6 +122,7 @@ class Accountability(commands.Cog):
                 description=description,
                 next_check_in=_first_check_in(user, recurrence),
                 recurrence=recurrence,
+                streak=0,
                 num_missed_in_a_row=0,
                 reminder=reminder,
             )
@@ -145,8 +146,7 @@ class Accountability(commands.Cog):
                 f"Next check in is in {time_until_commitment.days} more day(s)"
             )
 
-        commitment.num_missed_in_a_row = 0
-        commitment.cycle_check_in()
+        commitment.cycle_check_in(missed=False)
         await _save_and_message(ctx, f"Checked in! {commitment}")
 
     @commands.command()
