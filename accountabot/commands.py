@@ -193,9 +193,9 @@ class Accountability(commands.Cog):
             return
         await save_and_message(ctx, "Commitment Info", str(commitment))
 
-    @commands.command(name="todo")
+    @commands.command()
     @commands.check(_is_registered)
-    async def to_do(self, ctx: commands.Context):
+    async def todo(self, ctx: commands.Context):
         """Get a list of commitments to do today"""
 
         user = users.member_id_to_user[ctx.author.id]
@@ -205,7 +205,7 @@ class Accountability(commands.Cog):
             if commitment.next_check_in.date() == user_now.date():
                 to_dos.append(str(commitment))
         await save_and_message(
-            ctx, "Todo's", "\n".join(to_dos) if to_dos else "All done!"
+            ctx, "To do's", "\n".join(to_dos) if to_dos else "All done!"
         )
 
     @commands.command(name="toggle-active")
