@@ -6,6 +6,7 @@ from enum import unique, IntEnum
 import os
 import pickle
 
+from discord import Embed
 from discord.ext import commands
 
 
@@ -179,6 +180,14 @@ users = Users(member_id_to_user={})
 
 def user_time(user: User, dt: datetime):
     return dt + timedelta(hours=_timezone_to_utc_offset[user.timezone.code])
+
+
+async def save_and_message(
+    ctx: commands.Context, title: str | None, message: str
+) -> None:
+    users.save()
+    embed = Embed(title=title, description=message)
+    await ctx.send(embed=embed)
 
 
 _timezone_to_utc_offset: dict[str, int] = {
