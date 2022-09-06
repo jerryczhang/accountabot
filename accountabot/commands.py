@@ -192,6 +192,18 @@ class Accountability(commands.Cog):
             return
         await ctx.send(str(commitment))
 
+    @commands.command(name="to-do")
+    @commands.check(_is_registered)
+    async def to_do(self, ctx: commands.Context):
+        """Get a list of commitments to do today"""
+
+        user = users.member_id_to_user[ctx.author.id]
+        user_now = user_time(user, datetime.now())
+        for commitment in user.commitments:
+            if commitment.next_check_in.date() == user_now.date():
+                await ctx.send(str(commitment))
+                break
+
     @commands.command(name="toggle-active")
     @commands.check(_is_registered)
     async def toggle_active(self, ctx: commands.Context):
