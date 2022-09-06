@@ -91,7 +91,7 @@ class Commitment:
             return None
         user = users.member_id_to_user[ctx.author.id]
         for commitment in user.commitments:
-            if commitment.name == argument:
+            if commitment.name.lower() == argument.lower():
                 return commitment
         raise commands.errors.UserInputError(
             f'You don\'t have a commitment called "{argument}"'
