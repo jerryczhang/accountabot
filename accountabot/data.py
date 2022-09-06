@@ -77,10 +77,17 @@ class Commitment:
     description: str
     next_check_in: datetime
     recurrence: Recurrence
+    streak: int
     num_missed_in_a_row: int
     reminder: time | None
 
-    def cycle_check_in(self) -> None:
+    def cycle_check_in(self, missed: bool) -> None:
+        if missed:
+            self.streak = 0
+            self.num_missed_in_a_row += 1
+        else:
+            self.streak += 1
+            self.num_missed_in_a_row = 0
         self.next_check_in = self.recurrence.next_occurence(self.next_check_in)
 
     @classmethod
@@ -103,6 +110,7 @@ class Commitment:
             f"\tDescription: {self.description}",
             f"\tNext check in: {self.next_check_in.strftime('%a, %b %d')}",
             f"\tReminder: {self.reminder.strftime('%I:%M %p') if self.reminder else None}",
+            f"\tStreak: {self.streak}",
             f"\tNumber of misses in a row: {self.num_missed_in_a_row}",
             f"\tRepeats {self.recurrence}",
         ]
