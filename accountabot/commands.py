@@ -224,6 +224,9 @@ class Accountability(commands.Cog):
         """Toggles your profile between active and inactive"""
         user = users.member_id_to_user[ctx.author.id]
         user.is_active = not user.is_active
+        if user.is_active:
+            for commitment in user.commitments:
+                commitment.next_check_in = _first_check_in(user, commitment.recurrence)
         await save_and_message_ctx(ctx, str(user), title="User activity updated")
 
 
