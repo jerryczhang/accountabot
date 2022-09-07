@@ -1,14 +1,13 @@
 from datetime import datetime
-import logging
 
 import discord
 from discord.ext import commands, tasks  # type: ignore
 
 from .commands import Accountability
-from .data import User, users, user_time, save_and_message
+from .data import User, users, user_time
+from .message import save_and_message_ctx, save_and_message_guild
 
 
-logger = logging.getLogger("discord")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="&", intents=intents)
 
@@ -34,7 +33,7 @@ async def on_command_error(ctx: commands.Context, error: Exception):
         commands.errors.UserNotFound,
     ]
     if type(error) in redirected_errors:
-        await save_and_message(ctx, None, str(error))
+        await save_and_message_ctx(ctx, str(error))
     else:
         raise error
 
@@ -53,21 +52,6 @@ async def _commitment_check_loop():
     users.save()
 
 
-async def _send_message_to_guild(
-    guild: discord.Guild, title: str, message: str, mention: str
-) -> None:
-    embed = discord.Embed(title=title, description=message)
-    for channel in guild.text_channels:
-        try:
-            await channel.send(content=mention, embed=embed)
-            return
-        except discord.errors.Forbidden:
-            continue
-    logger.warn(
-        f"Unable to find a channel in guild#{guild.id} with permissions to send message"
-    )
-
-
 async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) -> None:
     now = datetime.now().utcnow()
     user_now = user_time(user, now)
@@ -75,10 +59,10 @@ async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) 
         if user_now < commitment.next_check_in:
             continue
         commitment.cycle_check_in(missed=True)
-        await _send_message_to_guild(
+        await save_and_message_guild(
             guild=guild,
-            title="Missed commitment",
             message=f"<@{user.member_id}> missed accountability commitment: {commitment}",
+            title="Missed commitment",
             mention="@everyone",
         )
     users.save()
@@ -96,9 +80,9 @@ async def _check_commitment_reminders_of_user(guild: discord.Guild, user: User) 
             or user_now.date() != commitment.next_check_in.date()
         ):
             continue
-        await _send_message_to_guild(
+        await save_and_message_guild(
             guild=guild,
-            title="Reminder",
             message=str(commitment),
+            title="Reminder",
             mention=f"<@{user.member_id}>",
         )

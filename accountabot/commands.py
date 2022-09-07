@@ -8,7 +8,7 @@ from .data import Recurrence
 from .data import Timezone
 from .data import users
 from .data import user_time
-from .data import save_and_message
+from .message import save_and_message_ctx
 
 
 _timezone_parameter = commands.parameter(
@@ -76,13 +76,13 @@ class Accountability(commands.Cog):
         if member_id in users.member_id_to_user:
             user = users.member_id_to_user[member_id]
             user.timezone = timezone
-            await save_and_message(ctx, "User updated", str(user))
+            await save_and_message_ctx(ctx, str(user), title="User Updated")
         else:
             new_user = User(
                 member_id=member_id, commitments=[], is_active=True, timezone=timezone
             )
             users.member_id_to_user[member_id] = new_user
-            await save_and_message(ctx, "Registered", str(new_user))
+            await save_and_message_ctx(ctx, str(new_user), title="Registered!")
 
     @commands.command()
     @commands.check(_is_registered)
@@ -115,7 +115,7 @@ class Accountability(commands.Cog):
             commitment.description = description
             commitment.recurrence = recurrence
             commitment.reminder = reminder
-            await save_and_message(ctx, "Commitment updated", str(commitment))
+            await save_and_message_ctx(ctx, str(commitment), title="Commitment updated")
         else:
             new_commitment = Commitment(
                 owner_id=user.member_id,
@@ -128,7 +128,9 @@ class Accountability(commands.Cog):
                 reminder=reminder,
             )
             user.commitments.append(new_commitment)
-            await save_and_message(ctx, "New commitment", str(new_commitment))
+            await save_and_message_ctx(
+                ctx, str(new_commitment), title="Commitment created!"
+            )
 
     @commands.command()
     @commands.check(_is_registered)
@@ -148,7 +150,15 @@ class Accountability(commands.Cog):
             )
 
         commitment.cycle_check_in(missed=False)
-        await save_and_message(ctx, "Checked in!", str(commitment))
+        await save_and_message_ctx(ctx, str(commitment), title="Checked in!")
+
+        if commitment.streak % 10 == 0:
+            await save_and_message_ctx(
+                ctx,
+                f"<@{user.member_id}>: {commitment.name}",
+                title=f"Streak of {commitment.streak} reached!",
+                mention="@everyone",
+            )
 
     @commands.command()
     @commands.check(_is_registered)
@@ -159,7 +169,7 @@ class Accountability(commands.Cog):
 
         user = users.member_id_to_user[ctx.author.id]
         user.commitments.remove(commitment)
-        await save_and_message(ctx, "Deleted commitment", str(commitment))
+        await save_and_message_ctx(ctx, str(commitment), title="Deleted commitment")
 
     @commands.command()
     @commands.check(_is_registered)
@@ -172,7 +182,7 @@ class Accountability(commands.Cog):
         """Set up or remove a reminder"""
 
         commitment.reminder = reminder
-        await save_and_message(ctx, "Commitment updated", str(commitment))
+        await save_and_message_ctx(ctx, str(commitment), title="Commitment updated")
 
     @commands.command()
     @commands.check(_is_registered)
@@ -189,9 +199,9 @@ class Accountability(commands.Cog):
         """
         user = users.member_id_to_user[ctx.author.id]
         if commitment is None:
-            await save_and_message(ctx, "User info", str(user))
+            await save_and_message_ctx(ctx, str(user), title="User info")
             return
-        await save_and_message(ctx, "Commitment Info", str(commitment))
+        await save_and_message_ctx(ctx, str(commitment), title="Commitment Info")
 
     @commands.command()
     @commands.check(_is_registered)
@@ -204,8 +214,8 @@ class Accountability(commands.Cog):
         for commitment in user.commitments:
             if commitment.next_check_in.date() == user_now.date():
                 to_dos.append(str(commitment))
-        await save_and_message(
-            ctx, "To do's", "\n".join(to_dos) if to_dos else "All done!"
+        await save_and_message_ctx(
+            ctx, "\n".join(to_dos) if to_dos else "All done!", title="To do's"
         )
 
     @commands.command(name="toggle-active")
@@ -214,7 +224,7 @@ class Accountability(commands.Cog):
         """Toggles your profile between active and inactive"""
         user = users.member_id_to_user[ctx.author.id]
         user.is_active = not user.is_active
-        await save_and_message(ctx, "User activity updated", str(user))
+        await save_and_message_ctx(ctx, str(user), title="User activity updated")
 
 
 def _find_commitment(user: User, commitment_name: str) -> Commitment | None:
