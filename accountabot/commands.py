@@ -130,9 +130,9 @@ class Accountability(commands.Cog):
             user.commitments.append(new_commitment)
             await save_and_message(ctx, "New commitment", str(new_commitment))
 
-    @commands.command(name="check-in")
+    @commands.command()
     @commands.check(_is_registered)
-    async def check_in(
+    async def check(
         self, ctx: commands.Context, commitment: Commitment = _commitment_parameter
     ):
         """Check in your accountability commitment (mark as completed)"""
