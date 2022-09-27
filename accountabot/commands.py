@@ -213,7 +213,7 @@ class Accountability(commands.Cog):
         to_dos = []
         for commitment in user.commitments:
             if commitment.next_check_in.date() == user_now.date():
-                to_dos.append(str(commitment))
+                to_dos.append(commitment.name)
         await save_and_message_ctx(
             ctx, "\n".join(to_dos) if to_dos else "All done!", title="To do's"
         )
