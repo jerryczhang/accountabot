@@ -90,23 +90,9 @@ class Commitment:
             self.num_missed_in_a_row = 0
         self.next_check_in = self.recurrence.next_occurence(self.next_check_in)
 
-    @classmethod
-    async def convert(
-        cls, ctx: commands.Context, argument: str | None
-    ) -> Commitment | None:
-        if argument is None:
-            return None
-        user = users.member_id_to_user[ctx.author.id]
-        for commitment in user.commitments:
-            if commitment.name.lower() == argument.lower():
-                return commitment
-        raise commands.errors.UserInputError(
-            f'You don\'t have a commitment called "{argument}"'
-        )
-
     def __str__(self) -> str:
         output_list = [
-            f"\n{self.name}:",
+            f"{self.name}:",
             f"\tDescription: {self.description}",
             f"\tNext check in: {self.next_check_in.strftime('%a, %b %d')}",
             f"\tReminder: {self.reminder.strftime('%I:%M %p') if self.reminder else None}",
@@ -139,22 +125,16 @@ class Timezone:
 @dataclass
 class User:
     member_id: int
-    commitments: list[Commitment]
+    commitment: Commitment | None
     is_active: bool
     timezone: Timezone
 
     def __str__(self) -> str:
         active = "Active" if self.is_active else "Inactive"
-        if self.commitments:
-            commitments = "\n".join(
-                [str(commitment) for commitment in self.commitments]
-            )
-        else:
-            commitments = "\nNo commitments"
         output_list = [
             f"<@{self.member_id}> [{active}] (Timezone: {self.timezone})\n",
-            "".rjust(50, "-"),
-            f"{commitments}",
+            "\n".rjust(50, "-"),
+            "No commitment" if self.commitment is None else str(self.commitment),
         ]
         return "".join(output_list)
 

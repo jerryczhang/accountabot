@@ -55,34 +55,36 @@ async def _commitment_check_loop():
 async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) -> None:
     now = datetime.now().utcnow()
     user_now = user_time(user, now)
-    for commitment in user.commitments:
-        if user_now < commitment.next_check_in:
-            continue
-        commitment.cycle_check_in(missed=True)
-        await save_and_message_guild(
-            guild=guild,
-            message=f"<@{user.member_id}> missed accountability commitment: {commitment}",
-            title="Missed commitment",
-            mention="@everyone",
-        )
+    commitment = user.commitment
+    if commitment is None or user_now < commitment.next_check_in:
+        return
+    commitment.cycle_check_in(missed=True)
+    await save_and_message_guild(
+        guild=guild,
+        message=f"<@{user.member_id}> missed accountability commitment: {commitment}",
+        title="Missed commitment",
+        mention="@everyone",
+    )
     users.save()
 
 
 async def _check_commitment_reminders_of_user(guild: discord.Guild, user: User) -> None:
     now = datetime.now().utcnow()
     user_now = user_time(user, now)
-    for commitment in user.commitments:
-        reminder = commitment.reminder
-        if (
-            reminder is None
-            or user_now.hour != reminder.hour
-            or user_now.minute != reminder.minute
-            or user_now.date() != commitment.next_check_in.date()
-        ):
-            continue
-        await save_and_message_guild(
-            guild=guild,
-            message=str(commitment),
-            title="Reminder",
-            mention=f"<@{user.member_id}>",
-        )
+    commitment = user.commitment
+    if commitment is None:
+        return
+    reminder = commitment.reminder
+    if (
+        reminder is None
+        or user_now.hour != reminder.hour
+        or user_now.minute != reminder.minute
+        or user_now.date() != commitment.next_check_in.date()
+    ):
+        return
+    await save_and_message_guild(
+        guild=guild,
+        message=str(commitment),
+        title="Reminder",
+        mention=f"<@{user.member_id}>",
+    )
