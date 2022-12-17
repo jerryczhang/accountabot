@@ -1,7 +1,6 @@
 import logging
 
 import discord
-from discord.ext import commands
 
 from .data import users
 
@@ -10,15 +9,18 @@ EMBED_COLOR = 0x8906A9
 logger = logging.getLogger("discord")
 
 
-async def save_and_message_ctx(
-    ctx: commands.Context,
+async def save_and_message_interaction(
+    interaction: discord.Interaction,
     message: str,
     title: str | None = None,
     mention: str | None = None,
+    ephemeral=False,
 ) -> None:
     users.save()
     embed = discord.Embed(title=title, description=message, color=EMBED_COLOR)
-    await ctx.send(content=mention, embed=embed)
+    await interaction.response.send_message(
+        content=mention, embed=embed, ephemeral=ephemeral
+    )
 
 
 async def save_and_message_guild(

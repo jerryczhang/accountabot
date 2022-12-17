@@ -1,211 +1,209 @@
 from datetime import datetime, time, timedelta
+from typing import Optional
 
-from discord.ext import commands  # type: ignore
+import discord
+from discord import app_commands
 
+from .accountabot import command_tree
 from .data import User
 from .data import Commitment
 from .data import Recurrence
 from .data import Timezone
 from .data import users
 from .data import user_time
-from .message import save_and_message_ctx
+from .message import save_and_message_interaction
 
 
-_timezone_parameter = commands.parameter(
-    description="Your timezone code (e.g. PST, PDT, EDT, etc.)",
-)
-
-_commitment_name_parameter = commands.parameter(
-    description="What do you want to commit to?",
-)
-
-_description_parameter = commands.parameter(
-    description="A detailed description",
-)
-
-_recurrence_parameter = commands.parameter(
-    description="How often your commitment repeats"
-)
-
-_optional_reminder_parameter = commands.parameter(
-    description='When to be reminded in format "H:MM AM/PM"',
-    default=None,
-)
-
-
-async def _is_registered(ctx: commands.Context):
-    is_registered = ctx.author.id in users.member_id_to_user
+def _is_registered(interaction: discord.Interaction) -> bool:
+    is_registered = interaction.user.id in users.member_id_to_user
     if not is_registered:
-        raise commands.errors.UserInputError(
-            f"You must register yourself as a user first!\n"
-            'Type "&register <your_timezone>"'
+        raise app_commands.AppCommandError(
+            f"Use the 'register' command to register yourself as a user first!"
         )
     return True
 
 
-async def _has_commitment(ctx: commands.Context):
-    user = users.member_id_to_user[ctx.author.id]
+def _has_commitment(interaction: discord.Interaction) -> bool:
+    user = users.member_id_to_user[interaction.user.id]
     if user.commitment is None:
-        raise commands.errors.UserInputError(
-            'You don\'t have a commitment yet! Use the "commit" command to create one'
+        raise app_commands.AppCommandError(
+            "Use the 'commit' command to create an accountability commitment first!"
         )
     return True
 
 
-class _Time(commands.Converter):
-    async def convert(self, ctx: commands.Context, argument: str) -> time:
+class _TimeTransformer(app_commands.Transformer):
+    async def transform(self, _: discord.Interaction, value: str) -> time:
         try:
-            return datetime.strptime(argument.upper(), "%I:%M %p").time()
+            return datetime.strptime(value.upper(), "%I:%M %p").time()
         except ValueError:
-            raise commands.errors.UserInputError(
-                f'Cannot parse time "{argument}", make sure to use format "H:MM AM/PM"'
+            raise app_commands.AppCommandError(
+                f"Cannot parse time '{value}', make sure to use format 'H:MM AM/PM'"
             )
 
 
-class Accountability(commands.Cog):
-    """Commands to manage your accountability commitments"""
+class _RecurrenceTransformer(app_commands.Transformer):
+    async def transform(self, _: discord.Interaction, value: str) -> Recurrence:
+        try:
+            return Recurrence.from_str(value)
+        except ValueError as ex:
+            raise app_commands.AppCommandError(ex)
 
-    @commands.command()
-    async def register(
-        self, ctx: commands.Context, timezone: Timezone = _timezone_parameter
-    ):
-        """Register yourself as a new user, or update your existing profile"""
 
-        member_id = ctx.author.id
-        if member_id in users.member_id_to_user:
-            user = users.member_id_to_user[member_id]
-            user.timezone = timezone
-            await save_and_message_ctx(ctx, str(user), title="User Updated")
-        else:
-            new_user = User(
-                member_id=member_id, commitment=None, is_active=True, timezone=timezone
-            )
-            users.member_id_to_user[member_id] = new_user
-            await save_and_message_ctx(ctx, str(new_user), title="Registered!")
+@command_tree.error
+async def on_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
+    await save_and_message_interaction(interaction, str(error), ephemeral=True)
 
-    @commands.command()
-    @commands.check(_is_registered)
-    async def commit(
-        self,
-        ctx: commands.Context,
-        name: str = _commitment_name_parameter,
-        description: str = _description_parameter,
-        recurrence: Recurrence = _recurrence_parameter,
-        reminder: _Time = _optional_reminder_parameter,
-    ):
-        """
-        Create a new commitment, or update existing commitment by name
 
-        Examples:
-            &commit "Read" "Read for 30 min. before bed" "daily"
-            &commit "Workout" "PPL program + flexibility routine" "Weekly Mon,Wed,Fri" "9:00 AM"
-            &commit "Golden hour" "Do a golden hour at work" "weekly mon tue wed thu fri"
+@command_tree.command()
+@app_commands.describe(timezone="Your timezone")
+async def register(interaction: discord.Interaction, timezone: Timezone):
+    """Register yourself as a new user, or update your existing profile"""
 
-        Enclose each argument in quotes
-
-        For the recurrence, either indicate "weekly" and specify the days of the week as a three-letter
-        abbreviation (e.g. Sun, Mon, Tue, etc.), or indicate "daily"
-
-        For the reminder, indicate the time in format "H:MM AM/PM", or leave blank for no reminder
-        """
-        user = users.member_id_to_user[ctx.author.id]
-        commitment = user.commitment
-        if commitment:
-            commitment.name = name
-            commitment.description = description
-            commitment.recurrence = recurrence
-            commitment.reminder = reminder
-            await save_and_message_ctx(ctx, str(commitment), title="Commitment updated")
-        else:
-            user.commitment = Commitment(
-                owner_id=user.member_id,
-                name=name,
-                description=description,
-                next_check_in=_first_check_in(user, recurrence),
-                recurrence=recurrence,
-                streak=0,
-                num_missed_in_a_row=0,
-                reminder=reminder,
-            )
-            await save_and_message_ctx(
-                ctx, str(user.commitment), title="Commitment created!"
-            )
-
-    @commands.command()
-    @commands.check(_has_commitment)
-    @commands.check(_is_registered)
-    async def check(self, ctx: commands.Context):
-        """Check in your accountability commitment (mark as completed)"""
-
-        user = users.member_id_to_user[ctx.author.id]
-        commitment = user.commitment
-        time_until_commitment = commitment.next_check_in - user_time(
-            user, datetime.now()
+    member_id = interaction.user.id
+    if member_id in users.member_id_to_user:
+        user = users.member_id_to_user[member_id]
+        user.timezone = timezone
+        await save_and_message_interaction(interaction, str(user), title="User Updated")
+    else:
+        new_user = User(
+            member_id=member_id, commitment=None, is_active=True, timezone=timezone
         )
-        if time_until_commitment.days >= 1:
-            raise commands.errors.UserInputError(
-                "You aren't supposed to do this commitment yet! "
-                f"Next check in is in {time_until_commitment.days} more day(s)"
-            )
+        users.member_id_to_user[member_id] = new_user
+        await save_and_message_interaction(
+            interaction, str(new_user), title="Registered!"
+        )
 
-        commitment.cycle_check_in(missed=False)
-        await save_and_message_ctx(ctx, str(commitment), title="Checked in!")
 
-        if commitment.streak % 10 == 0:
-            await save_and_message_ctx(
-                ctx,
-                f"<@{user.member_id}>: {commitment.name}",
-                title=f"Streak of {commitment.streak} reached!",
-                mention="@everyone",
-            )
+@command_tree.command()
+@app_commands.describe(
+    name="What do you want to commit to?",
+    description="A brief description of your commitment",
+    recurrence="How often you want your commitment to repeat",
+    reminder="When to be reminded about your commitment (in format HH:MM AM/PM)",
+)
+@app_commands.check(_is_registered)
+async def commit(
+    interaction: discord.Interaction,
+    name: str,
+    description: str,
+    recurrence: app_commands.Transform[Recurrence, _RecurrenceTransformer],
+    reminder: Optional[app_commands.Transform[time, _TimeTransformer]],
+):
+    """Create a new commitment, or update existing commitment by name"""
 
-    @commands.command()
-    @commands.check(_has_commitment)
-    @commands.check(_is_registered)
-    async def delete(self, ctx: commands.Context):
-        """Delete an accountability commitment"""
-
-        user = users.member_id_to_user[ctx.author.id]
-        commitment = user.commitment
-        user.commitment = None
-        await save_and_message_ctx(ctx, str(commitment), title="Deleted commitment")
-
-    @commands.command()
-    @commands.check(_has_commitment)
-    @commands.check(_is_registered)
-    async def remind(
-        self,
-        ctx: commands.Context,
-        reminder: _Time = _optional_reminder_parameter,
-    ):
-        """Set up or remove a reminder"""
-
-        commitment = users.member_id_to_user[ctx.author.id].commitment
+    user = users.member_id_to_user[interaction.user.id]
+    commitment = user.commitment
+    if commitment:
+        commitment.name = name
+        commitment.description = description
+        commitment.recurrence = recurrence
         commitment.reminder = reminder
-        await save_and_message_ctx(ctx, str(commitment), title="Commitment updated")
+        await save_and_message_interaction(
+            interaction, str(commitment), title="Commitment updated"
+        )
+    else:
+        user.commitment = Commitment(
+            owner_id=user.member_id,
+            name=name,
+            description=description,
+            next_check_in=_first_check_in(user, recurrence),
+            recurrence=recurrence,
+            streak=0,
+            num_missed_in_a_row=0,
+            reminder=reminder,
+        )
+        await save_and_message_interaction(
+            interaction, str(user.commitment), title="Commitment created!"
+        )
 
-    @commands.command()
-    @commands.check(_is_registered)
-    async def info(
-        self,
-        ctx: commands.Context,
-    ):
-        """
-        Display info about your profile and commitment
-        """
-        user = users.member_id_to_user[ctx.author.id]
-        await save_and_message_ctx(ctx, str(user), title="User info")
 
-    @commands.command(name="toggle-active")
-    @commands.check(_is_registered)
-    async def toggle_active(self, ctx: commands.Context):
-        """Toggles your profile between active and inactive"""
-        user = users.member_id_to_user[ctx.author.id]
-        user.is_active = not user.is_active
-        if user.is_active:
-            commitment = user.commitment
-            commitment.next_check_in = _first_check_in(user, commitment.recurrence)
-        await save_and_message_ctx(ctx, str(user), title="User activity updated")
+@command_tree.command()
+@app_commands.check(_has_commitment)
+@app_commands.check(_is_registered)
+async def check(interaction: discord.Interaction):
+    """Check in your accountability commitment (mark as completed)"""
+
+    user = users.member_id_to_user[interaction.user.id]
+    commitment = user.commitment
+    time_until_commitment = commitment.next_check_in - user_time(user, datetime.now())
+    if time_until_commitment.days >= 1:
+        raise app_commands.AppCommandError(
+            "You aren't supposed to do this commitment yet! "
+            f"Next check in is in {time_until_commitment.days} more day(s)"
+        )
+
+    commitment.cycle_check_in(missed=False)
+    await save_and_message_interaction(
+        interaction, str(commitment), title="Checked in!"
+    )
+
+    if commitment.streak % 10 == 0:
+        await save_and_message_interaction(
+            interaction,
+            f"<@{user.member_id}>: {commitment.name}",
+            title=f"Streak of {commitment.streak} reached!",
+            mention="@everyone",
+        )
+
+
+@command_tree.command()
+@app_commands.check(_has_commitment)
+@app_commands.check(_is_registered)
+async def delete(interaction: discord.Interaction):
+    """Delete an accountability commitment"""
+
+    user = users.member_id_to_user[interaction.user.id]
+    commitment = user.commitment
+    user.commitment = None
+    await save_and_message_interaction(
+        interaction, str(commitment), title="Deleted commitment"
+    )
+
+
+@command_tree.command()
+@app_commands.check(_has_commitment)
+@app_commands.check(_is_registered)
+@app_commands.describe(
+    reminder="When to be reminded about your commitment (in format HH:MM AM/PM)"
+)
+async def remind(
+    interaction: discord.Interaction,
+    reminder: app_commands.Transform[time, _TimeTransformer],
+):
+    """Set up or remove a reminder"""
+
+    commitment = users.member_id_to_user[interaction.user.id].commitment
+    commitment.reminder = reminder
+    await save_and_message_interaction(
+        interaction, str(commitment), title="Commitment updated"
+    )
+
+
+@command_tree.command()
+@app_commands.check(_is_registered)
+async def info(interaction: discord.Interaction):
+    """Display info about your profile and commitment"""
+
+    user = users.member_id_to_user[interaction.user.id]
+    await save_and_message_interaction(interaction, str(user), title="User info")
+
+
+@command_tree.command(name="toggle-active")
+@app_commands.check(_is_registered)
+async def toggle_active(interaction: discord.Interaction):
+    """Toggles your profile between active and inactive"""
+
+    user = users.member_id_to_user[interaction.user.id]
+    user.is_active = not user.is_active
+    if user.is_active:
+        commitment = user.commitment
+        commitment.next_check_in = _first_check_in(user, commitment.recurrence)
+    await save_and_message_interaction(
+        interaction, str(user), title="User activity updated"
+    )
 
 
 def _first_check_in(user: User, recurrence: Recurrence) -> datetime:

@@ -1,41 +1,25 @@
 from datetime import datetime
 
 import discord
-from discord.ext import commands, tasks  # type: ignore
+from discord import app_commands
+from discord.ext import tasks  # type: ignore
 
-from .commands import Accountability
 from .data import User, users, user_time
-from .message import save_and_message_ctx, save_and_message_guild
+from .message import save_and_message_guild
 
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="&", intents=intents)
+bot = discord.Client(intents=discord.Intents.all())
+command_tree = app_commands.CommandTree(bot)
 
 
 @bot.event
 async def on_ready():
+    for guild in bot.guilds:
+        command_tree.copy_global_to(guild=guild)
+        await command_tree.sync(guild=guild)
+
     users.load()
-    await bot.add_cog(Accountability(bot))
-    activity = discord.Activity(
-        type=discord.ActivityType.listening, name=f"{bot.command_prefix}help"
-    )
-    await bot.change_presence(activity=activity)
-
     _commitment_check_loop.start()
-
-
-@bot.event
-async def on_command_error(ctx: commands.Context, error: Exception):
-    redirected_errors = [
-        commands.errors.CommandNotFound,
-        commands.errors.MissingRequiredArgument,
-        commands.errors.UserInputError,
-        commands.errors.UserNotFound,
-    ]
-    if type(error) in redirected_errors:
-        await save_and_message_ctx(ctx, str(error))
-    else:
-        raise error
 
 
 @tasks.loop(minutes=1)
@@ -61,7 +45,7 @@ async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) 
     commitment.cycle_check_in(missed=True)
     await save_and_message_guild(
         guild=guild,
-        message=f"<@{user.member_id}> missed accountability commitment: {commitment}",
+        message=f"<@{user.member_id}> missed accountability commitment: \n{commitment}",
         title="Missed commitment",
         mention="@everyone",
     )
