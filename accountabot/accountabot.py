@@ -1,9 +1,11 @@
 import logging
+import os
 from datetime import datetime
 
 import discord
 from discord import app_commands
 from discord.ext import tasks  # type: ignore
+from dotenv import load_dotenv
 
 from .data import User
 from .data import user_time
@@ -14,6 +16,11 @@ from .message import save_and_message_guild
 bot = discord.Client(intents=discord.Intents.all())
 command_tree = app_commands.CommandTree(bot)
 logger = logging.getLogger("discord")
+
+
+def main() -> int:
+    load_dotenv()
+    bot.run(os.getenv("DISCORD_TOKEN"))
 
 
 @bot.event
