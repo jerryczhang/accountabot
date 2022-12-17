@@ -20,7 +20,12 @@ logger = logging.getLogger("discord")
 
 def main() -> int:
     load_dotenv()
-    bot.run(os.getenv("DISCORD_TOKEN"))
+    token = os.getenv("DISCORD_TOKEN")
+    if token is None:
+        raise RuntimeError("Token environment variable not found")
+
+    bot.run(token)
+    return 0
 
 
 @bot.event

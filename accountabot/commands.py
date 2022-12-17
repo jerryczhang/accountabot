@@ -25,13 +25,12 @@ def _is_registered(interaction: discord.Interaction) -> bool:
     return True
 
 
-def _has_commitment(interaction: discord.Interaction) -> bool:
-    user = users.member_id_to_user[interaction.user.id]
+def _get_user_commitment(user: User) -> Commitment:
     if user.commitment is None:
         raise app_commands.AppCommandError(
             "Use the 'commit' command to create an accountability commitment first!"
         )
-    return True
+    return user.commitment
 
 
 class _TimeTransformer(app_commands.Transformer):
@@ -128,13 +127,12 @@ async def commit(
 
 
 @command_tree.command()
-@app_commands.check(_has_commitment)
 @app_commands.check(_is_registered)
 async def check(interaction: discord.Interaction):
     """Check in your accountability commitment (mark as completed)"""
 
     user = users.member_id_to_user[interaction.user.id]
-    commitment = user.commitment
+    commitment = _get_user_commitment(user)
     time_until_commitment = commitment.next_check_in - user_time(
         user, datetime.now()
     )
@@ -159,13 +157,12 @@ async def check(interaction: discord.Interaction):
 
 
 @command_tree.command()
-@app_commands.check(_has_commitment)
 @app_commands.check(_is_registered)
 async def delete(interaction: discord.Interaction):
     """Delete an accountability commitment"""
 
     user = users.member_id_to_user[interaction.user.id]
-    commitment = user.commitment
+    commitment = _get_user_commitment(user)
     user.commitment = None
     await save_and_message_interaction(
         interaction, str(commitment), title="Deleted commitment"
@@ -173,7 +170,6 @@ async def delete(interaction: discord.Interaction):
 
 
 @command_tree.command()
-@app_commands.check(_has_commitment)
 @app_commands.check(_is_registered)
 @app_commands.describe(
     reminder="When to be reminded about your commitment (in format HH:MM AM/PM)"
@@ -184,7 +180,8 @@ async def remind(
 ):
     """Set up or remove a reminder"""
 
-    commitment = users.member_id_to_user[interaction.user.id].commitment
+    user = users.member_id_to_user[interaction.user.id]
+    commitment = _get_user_commitment(user)
     commitment.reminder = reminder
     await save_and_message_interaction(
         interaction, str(commitment), title="Commitment updated"
@@ -209,7 +206,7 @@ async def toggle_active(interaction: discord.Interaction):
 
     user = users.member_id_to_user[interaction.user.id]
     user.is_active = not user.is_active
-    if user.is_active:
+    if user.is_active and user.commitment is not None:
         commitment = user.commitment
         commitment.next_check_in = _first_check_in(user, commitment.recurrence)
     await save_and_message_interaction(
