@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 import discord
 from discord import app_commands
@@ -10,6 +11,7 @@ from .message import save_and_message_guild
 
 bot = discord.Client(intents=discord.Intents.all())
 command_tree = app_commands.CommandTree(bot)
+logger = logging.getLogger("discord")
 
 
 @bot.event
@@ -19,6 +21,7 @@ async def on_ready():
         await command_tree.sync(guild=guild)
 
     users.load()
+    logger.info("Users loaded")
     _commitment_check_loop.start()
 
 
