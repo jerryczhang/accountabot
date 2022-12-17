@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, time, timedelta
-from enum import unique, IntEnum
 import os
 import pickle
+from dataclasses import dataclass
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
+from enum import IntEnum
+from enum import unique
 
 
 USERS_FILE = "users.pkl"
@@ -63,17 +66,22 @@ class Recurrence:
                     weekdays.append(weekday)
             if not weekdays:
                 raise ValueError(
-                    "Weekdays must be specified in a weekly occurence, e.g. 'Sun', 'Mon', 'Tue', etc."
+                    "Weekdays must be specified in a weekly occurence, "
+                    "e.g. 'Sun', 'Mon', 'Tue', etc."
                 )
             return cls(Repetition.WEEKLY, weekdays)
         else:
-            raise ValueError("'daily' or 'weekly' must be specified in recurrence")
+            raise ValueError(
+                "'daily' or 'weekly' must be specified in recurrence"
+            )
 
     def __str__(self) -> str:
         if self.repetition == Repetition.DAILY:
             return "daily"
         else:
-            weekdays = ", ".join(weekday.name.title() for weekday in self.weekdays)
+            weekdays = ", ".join(
+                weekday.name.title() for weekday in self.weekdays
+            )
             return f"weekly on {weekdays}"
 
 
@@ -122,7 +130,9 @@ class User:
         output_list = [
             f"<@{self.member_id}> [{active}] (Timezone: {self.timezone.name})\n",
             "\n".rjust(50, "-"),
-            "No commitment" if self.commitment is None else str(self.commitment),
+            "No commitment"
+            if self.commitment is None
+            else str(self.commitment),
         ]
         return "".join(output_list)
 
@@ -160,7 +170,9 @@ _abbreviation_to_weekday: dict[str, Weekday] = {
 }
 
 
-def _days_until_valid_weekday(dt: datetime, valid_weekdays: list[Weekday]) -> int:
+def _days_until_valid_weekday(
+    dt: datetime, valid_weekdays: list[Weekday]
+) -> int:
     if not valid_weekdays:
         return -1
     current_weekday = dt.weekday()

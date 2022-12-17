@@ -1,16 +1,18 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 from typing import Optional
 
 import discord
 from discord import app_commands
 
 from .accountabot import command_tree
-from .data import User
 from .data import Commitment
 from .data import Recurrence
 from .data import Timezone
-from .data import users
+from .data import User
 from .data import user_time
+from .data import users
 from .message import save_and_message_interaction
 
 
@@ -18,7 +20,7 @@ def _is_registered(interaction: discord.Interaction) -> bool:
     is_registered = interaction.user.id in users.member_id_to_user
     if not is_registered:
         raise app_commands.AppCommandError(
-            f"Use the 'register' command to register yourself as a user first!"
+            "Use the 'register' command to register yourself as a user first!"
         )
     return True
 
@@ -66,10 +68,15 @@ async def register(interaction: discord.Interaction, timezone: Timezone):
     if member_id in users.member_id_to_user:
         user = users.member_id_to_user[member_id]
         user.timezone = timezone
-        await save_and_message_interaction(interaction, str(user), title="User Updated")
+        await save_and_message_interaction(
+            interaction, str(user), title="User Updated"
+        )
     else:
         new_user = User(
-            member_id=member_id, commitment=None, is_active=True, timezone=timezone
+            member_id=member_id,
+            commitment=None,
+            is_active=True,
+            timezone=timezone,
         )
         users.member_id_to_user[member_id] = new_user
         await save_and_message_interaction(
@@ -128,7 +135,9 @@ async def check(interaction: discord.Interaction):
 
     user = users.member_id_to_user[interaction.user.id]
     commitment = user.commitment
-    time_until_commitment = commitment.next_check_in - user_time(user, datetime.now())
+    time_until_commitment = commitment.next_check_in - user_time(
+        user, datetime.now()
+    )
     if time_until_commitment.days >= 1:
         raise app_commands.AppCommandError(
             "You aren't supposed to do this commitment yet! "
@@ -188,7 +197,9 @@ async def info(interaction: discord.Interaction):
     """Display info about your profile and commitment"""
 
     user = users.member_id_to_user[interaction.user.id]
-    await save_and_message_interaction(interaction, str(user), title="User info")
+    await save_and_message_interaction(
+        interaction, str(user), title="User info"
+    )
 
 
 @command_tree.command(name="toggle-active")
@@ -209,6 +220,11 @@ async def toggle_active(interaction: discord.Interaction):
 def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
     now = user_time(user, datetime.now().utcnow())
     midnight = datetime(
-        year=now.year, month=now.month, day=now.day, hour=23, minute=59, second=59
+        year=now.year,
+        month=now.month,
+        day=now.day,
+        hour=23,
+        minute=59,
+        second=59,
     )
     return recurrence.next_occurence(midnight - timedelta(days=1))

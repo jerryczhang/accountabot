@@ -1,11 +1,13 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 
 import discord
 from discord import app_commands
 from discord.ext import tasks  # type: ignore
 
-from .data import User, users, user_time
+from .data import User
+from .data import user_time
+from .data import users
 from .message import save_and_message_guild
 
 
@@ -39,7 +41,9 @@ async def _commitment_check_loop():
     users.save()
 
 
-async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) -> None:
+async def _check_commitment_check_ins_of_user(
+    guild: discord.Guild, user: User
+) -> None:
     now = datetime.now().utcnow()
     user_now = user_time(user, now)
     commitment = user.commitment
@@ -55,7 +59,9 @@ async def _check_commitment_check_ins_of_user(guild: discord.Guild, user: User) 
     users.save()
 
 
-async def _check_commitment_reminders_of_user(guild: discord.Guild, user: User) -> None:
+async def _check_commitment_reminders_of_user(
+    guild: discord.Guild, user: User
+) -> None:
     now = datetime.now().utcnow()
     user_now = user_time(user, now)
     commitment = user.commitment
