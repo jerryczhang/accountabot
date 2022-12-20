@@ -26,5 +26,6 @@ exclude = '''
 
 [tool.pyright]
 include = ["accountabot"]
+exclude = ["tests"]
 defineConstant = { DEBUG = true }
 venvPath = "venv"
