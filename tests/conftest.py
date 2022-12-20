@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from discord import Interaction
 
+from accountabot import commands
 from accountabot.data import Commitment
 from accountabot.data import Recurrence
 from accountabot.data import Repetition
@@ -13,36 +14,55 @@ from accountabot.data import User
 from accountabot.data import Users
 
 
-REGISTERED_USER_ID = 0
-UNREGISTERED_USER_ID = 1
+UNREGISTERED_USER_ID = 0
+UNCOMMITED_USER_ID = 1
+COMMITTED_USER_ID = 2
 
 
-async def mock_send_message():
-    ...
+class MockSendMessage(MagicMock):
+    def __call__(self, *args, **kwargs):
+        super().__call__(args, kwargs)
+
+        async def mock_send_message():
+            ...
+
+        return mock_send_message()
 
 
 @pytest.fixture
-def interaction():
+def _interaction():
     interaction = MagicMock(spec=Interaction)
-    interaction.user.id = REGISTERED_USER_ID
-    interaction.response.send_message.return_value = mock_send_message()
-
+    interaction.response.send_message = MockSendMessage()
     return interaction
 
 
 @pytest.fixture
-def interaction_with_unregistered_user():
-    interaction = MagicMock(spec=Interaction)
-    interaction.user.id = UNREGISTERED_USER_ID
-    interaction.response.send_message.return_value = mock_send_message()
+def interaction_with_unregistered_user(_interaction):
+    _interaction.user.id = UNREGISTERED_USER_ID
+    return _interaction
 
-    return interaction
+
+@pytest.fixture
+def interaction_with_uncommitted_user(_interaction):
+    _interaction.user.id = UNCOMMITED_USER_ID
+    return _interaction
+
+
+@pytest.fixture
+def interaction_with_committed_user(_interaction):
+    _interaction.user.id = COMMITTED_USER_ID
+    return _interaction
+
+
+@pytest.fixture
+def users():
+    return commands.users
 
 
 @pytest.fixture(autouse=True)
 def patch_users():
     commitment = Commitment(
-        owner_id=REGISTERED_USER_ID,
+        owner_id=COMMITTED_USER_ID,
         name="Test commitment",
         description="This is a test commitment",
         next_check_in=datetime.now(),
@@ -51,13 +71,24 @@ def patch_users():
         num_missed_in_a_row=0,
         reminder=None,
     )
-    user = User(
-        member_id=REGISTERED_USER_ID,
+    committed_user = User(
+        member_id=COMMITTED_USER_ID,
         commitment=commitment,
         is_active=True,
         timezone=Timezone.PST,
     )
-    users = Users({REGISTERED_USER_ID: user})
+    uncommitted_user = User(
+        member_id=UNCOMMITED_USER_ID,
+        commitment=None,
+        is_active=True,
+        timezone=Timezone.AKST,
+    )
+    users = Users(
+        {
+            COMMITTED_USER_ID: committed_user,
+            UNCOMMITED_USER_ID: uncommitted_user,
+        }
+    )
     with patch("accountabot.commands.users", users):
         yield
 
