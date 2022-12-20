@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pytest
 from discord import Interaction
 
-from accountabot import commands
 from accountabot.data import Commitment
+from accountabot.data import get_users
 from accountabot.data import Recurrence
 from accountabot.data import Repetition
 from accountabot.data import Timezone
@@ -56,7 +56,7 @@ def interaction_with_committed_user(_interaction):
 
 @pytest.fixture
 def users():
-    return commands.users
+    return get_users()
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +89,7 @@ def patch_users():
             UNCOMMITED_USER_ID: uncommitted_user,
         }
     )
-    with patch("accountabot.commands.users", users):
+    with patch("accountabot.data._users", users):
         yield
 
 

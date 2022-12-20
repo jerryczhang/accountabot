@@ -2,7 +2,7 @@ import logging
 
 import discord
 
-from .data import users
+from .data import get_users
 
 
 EMBED_COLOR = 0x8906A9
@@ -16,7 +16,7 @@ async def save_and_message_interaction(
     mention: str | None = None,
     ephemeral=False,
 ) -> None:
-    users.save()
+    get_users().save()
     embed = discord.Embed(title=title, description=message, color=EMBED_COLOR)
     await interaction.response.send_message(
         content=mention, embed=embed, ephemeral=ephemeral
@@ -29,7 +29,7 @@ async def save_and_message_guild(
     title: str | None = None,
     mention: str | None = None,
 ) -> None:
-    users.save()
+    get_users().save()
     embed = discord.Embed(title=title, description=message, color=EMBED_COLOR)
     for channel in guild.text_channels:
         try:

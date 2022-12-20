@@ -7,9 +7,9 @@ from discord import app_commands
 from discord.ext import tasks  # type: ignore
 from dotenv import load_dotenv
 
+from .data import get_users
 from .data import User
 from .data import user_time
-from .data import users
 from .message import save_and_message_guild
 
 
@@ -34,13 +34,14 @@ async def on_ready():
         command_tree.copy_global_to(guild=guild)
         await command_tree.sync(guild=guild)
 
-    users.load()
+    get_users().load()
     logger.info("Users loaded")
     _commitment_check_loop.start()
 
 
 @tasks.loop(minutes=1)
 async def _commitment_check_loop():
+    users = get_users()
     for guild in bot.guilds:
         for member in guild.members:
             if member.id not in users.member_id_to_user:
@@ -68,7 +69,7 @@ async def _check_commitment_check_ins_of_user(
         title="Missed commitment",
         mention="@everyone",
     )
-    users.save()
+    get_users().save()
 
 
 async def _check_commitment_reminders_of_user(

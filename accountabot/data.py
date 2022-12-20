@@ -152,11 +152,15 @@ class Users:
             self.member_id_to_user = pickle.load(f)
 
 
-users = Users(member_id_to_user={})
+def get_users():
+    return _users
 
 
 def user_time(user: User, dt: datetime):
     return dt + timedelta(hours=user.timezone.value)
+
+
+_users = Users(member_id_to_user={})
 
 
 _abbreviation_to_weekday: dict[str, Weekday] = {

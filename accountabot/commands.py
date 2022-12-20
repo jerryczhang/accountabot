@@ -8,16 +8,16 @@ from discord import app_commands
 
 from .accountabot import command_tree
 from .data import Commitment
+from .data import get_users
 from .data import Recurrence
 from .data import Timezone
 from .data import User
 from .data import user_time
-from .data import users
 from .message import save_and_message_interaction
 
 
 def _is_registered(interaction: discord.Interaction) -> bool:
-    is_registered = interaction.user.id in users.member_id_to_user
+    is_registered = interaction.user.id in get_users().member_id_to_user
     if not is_registered:
         raise app_commands.AppCommandError(
             "Use the 'register' command to register yourself as a user first!"
@@ -63,6 +63,7 @@ async def on_error(
 async def register(interaction: discord.Interaction, timezone: Timezone):
     """Register yourself as a new user, or update your existing profile"""
 
+    users = get_users()
     member_id = interaction.user.id
     if member_id in users.member_id_to_user:
         user = users.member_id_to_user[member_id]
@@ -100,7 +101,7 @@ async def commit(
 ):
     """Create a new commitment, or update existing commitment by name"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     commitment = user.commitment
     if commitment:
         commitment.name = name
@@ -131,7 +132,7 @@ async def commit(
 async def check(interaction: discord.Interaction):
     """Check in your accountability commitment (mark as completed)"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     commitment = _get_user_commitment(user)
     time_until_commitment = commitment.next_check_in - user_time(
         user, datetime.now()
@@ -161,7 +162,7 @@ async def check(interaction: discord.Interaction):
 async def delete(interaction: discord.Interaction):
     """Delete an accountability commitment"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     commitment = _get_user_commitment(user)
     user.commitment = None
     await save_and_message_interaction(
@@ -180,7 +181,7 @@ async def remind(
 ):
     """Set up or remove a reminder"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     commitment = _get_user_commitment(user)
     commitment.reminder = reminder
     await save_and_message_interaction(
@@ -193,7 +194,7 @@ async def remind(
 async def info(interaction: discord.Interaction):
     """Display info about your profile and commitment"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     await save_and_message_interaction(
         interaction, str(user), title="User info"
     )
@@ -204,7 +205,7 @@ async def info(interaction: discord.Interaction):
 async def toggle_active(interaction: discord.Interaction):
     """Toggles your profile between active and inactive"""
 
-    user = users.member_id_to_user[interaction.user.id]
+    user = get_users().member_id_to_user[interaction.user.id]
     user.is_active = not user.is_active
     if user.is_active and user.commitment is not None:
         commitment = user.commitment
