@@ -135,7 +135,7 @@ async def check(interaction: discord.Interaction):
     user = get_users().member_id_to_user[interaction.user.id]
     commitment = _get_user_commitment(user)
     time_until_commitment = commitment.next_check_in - user_time(
-        user, datetime.now()
+        user, datetime.utcnow()
     )
     if time_until_commitment.days >= 1:
         raise app_commands.AppCommandError(
@@ -216,7 +216,7 @@ async def toggle_active(interaction: discord.Interaction):
 
 
 def _first_check_in(user: User, recurrence: Recurrence) -> datetime:
-    now = user_time(user, datetime.now().utcnow())
+    now = user_time(user, datetime.utcnow())
     midnight = datetime(
         year=now.year,
         month=now.month,
