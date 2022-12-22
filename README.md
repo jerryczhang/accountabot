@@ -4,7 +4,7 @@ AccountaBot is a discord bot designed to help you build habits using the best-kn
 
 To add AccountaBot to your server, use [this link](https://discord.com/api/oauth2/authorize?client_id=1013131291660656640&permissions=133120&scope=bot%20applications.commands).
 
-## Features
+### Features
 - Publicly commit to a habit on a regularly-occuring schedule
 - Set reminders
 - Announces to the entire server (adjustable by permissions) when someone fails to check their commitment
