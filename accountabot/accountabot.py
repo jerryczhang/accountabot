@@ -15,11 +15,13 @@ logger = logging.getLogger("discord")
 
 
 @bot.event
-async def on_ready():
-    for guild in bot.guilds:
-        command_tree.copy_global_to(guild=guild)
-        await command_tree.sync(guild=guild)
+async def on_guild_join(guild: discord.Guild):
+    command_tree.copy_global_to(guild=guild)
+    await command_tree.sync(guild=guild)
 
+
+@bot.event
+async def on_ready():
     get_users().load()
     logger.info("Users loaded")
     commitment_check_loop.start(bot.guilds)
