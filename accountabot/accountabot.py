@@ -27,6 +27,9 @@ async def on_ready():
     commitment_check_loop.start(bot.guilds)
 
 
+x: int = "Test"
+
+
 def main() -> int:
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
