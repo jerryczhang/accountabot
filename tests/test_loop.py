@@ -16,4 +16,4 @@ async def test_commitment_check_loop_sends_failure_and_reminder(
 
     assert send.call_count == 2
     assert "Reminder" in titles
-    assert "Missed commitment"
+    assert "Missed commitment" in titles
