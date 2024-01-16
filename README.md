@@ -1,6 +1,6 @@
 # AccountaBot
 
-AccountaBot is a discord bot designed to help you build habits using the best-known methods of motivation--public shame and ridicule!
+AccountaBot is a discord bot designed to help you build habits using one of the best-known methods of motivation--publicity!
 
 To add AccountaBot to your server, use [this link](https://discord.com/api/oauth2/authorize?client_id=1013131291660656640&permissions=133120&scope=bot%20applications.commands).
 
